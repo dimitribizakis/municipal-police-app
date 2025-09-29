@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Δημοτική Αστυνομία - Σύστημα Παραβάσεων{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Signature Pad -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #1e3c72;
+            --secondary-color: #2a5298;
+            --accent-color: #f8f9fa;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color)) !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-brand img {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+        }
+        
+        .navbar-brand {
+            color: white !important;
+            font-weight: 600;
+        }
+        
+        .navbar-nav .nav-link {
+            color: rgba(255,255,255,0.9) !important;
+            font-weight: 500;
+            margin: 0 5px;
+        }
+        
+        .navbar-nav .nav-link:hover {
+            color: white !important;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+        
+        .navbar-nav .nav-link.active {
+            color: white !important;
+            background-color: rgba(255,255,255,0.2);
+            border-radius: 5px;
+        }
+        
+        .main-content {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .card-header {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            font-weight: 500;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+            transform: translateY(-1px);
+        }
+        
+        .signature-pad {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            background-color: #fafafa;
+        }
+        
+        .camera-container {
+            position: relative;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .camera-controls {
+            text-align: center;
+            margin-top: 1rem;
+        }
+        
+        #camera-preview {
+            width: 100%;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        #photo-canvas {
+            display: none;
+        }
+        
+        .photo-preview {
+            max-width: 200px;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+        
+        .user-info {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.9em;
+        }
+        
+        .dropdown-menu {
+            border: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+        
+        .footer {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem 0;
+            margin-top: 4rem;
+        }
+        
+        @media print {
+            .navbar, .footer, .no-print {
+                display: none !important;
+            }
+            
+            .main-content {
+                margin-top: 0;
+            }
+            
+            .card {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+        }
+        
+        /* Dynamic Fields Styling */
+        .dynamic-field-container {
+            position: relative;
+        }
+        
+        .custom-input {
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .custom-input.show {
+            display: block;
+        }
+        
+        /* Loading spinner */
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo" class="me-2">
+                Δημοτική Αστυνομία
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if session.user_id %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('index') }}">
+                                <i class="fas fa-plus-circle me-1"></i>Νέα Παράβαση
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('view_violations') }}">
+                                <i class="fas fa-list me-1"></i>Παραβάσεις
+                            </a>
+                        </li>
+                        {% if session.user_role == 'admin' %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-cogs me-1"></i>Διαχείριση
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
+                                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_users') }}">
+                                    <i class="fas fa-users me-2"></i>Χρήστες
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_violations') }}">
+                                    <i class="fas fa-edit me-2"></i>Επεξεργασία Παραβάσεων
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_reports') }}">
+                                    <i class="fas fa-chart-bar me-2"></i>Αναφορές
+                                </a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+                
+                {% if session.user_id %}
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle user-info" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i>{{ session.full_name }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header">
+                                <i class="fas fa-info-circle me-1"></i>{{ session.full_name }}
+                            </h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i>Αποσύνδεση
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show" role="alert">
+                        {% if category == 'success' %}
+                            <i class="fas fa-check-circle me-2"></i>
+                        {% elif category == 'error' %}
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                        {% elif category == 'warning' %}
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                        {% else %}
+                            <i class="fas fa-info-circle me-2"></i>
+                        {% endif %}
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <div class="container main-content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="spinner-overlay" id="loadingSpinner">
+        <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Φόρτωση...</span>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer no-print">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-shield-alt me-2"></i>Δημοτική Αστυνομία</h5>
+                    <p class="mb-0">Σύστημα Καταχώρησης και Διαχείρισης Παραβάσεων Οχημάτων</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">
+                        <i class="fas fa-code me-1"></i>Municipal Police System v2.0
+                    </p>
+                    <small>© 2025 - Όλα τα δικαιώματα κατοχυρωμένα</small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Common JavaScript -->
+    <script>
+        // Global functions for camera and dynamic fields
+        let currentStream = null;
+        let signaturePad = null;
+        
+        // Show loading spinner
+        function showLoading() {
+            document.getElementById('loadingSpinner').style.display = 'flex';
+        }
+        
+        // Hide loading spinner
+        function hideLoading() {
+            document.getElementById('loadingSpinner').style.display = 'none';
+        }
+        
+        // Initialize dynamic field handlers
+        function initDynamicFields() {
+            // Handle vehicle color selection
+            const colorSelect = document.getElementById('vehicle_color');
+            const customColorDiv = document.getElementById('custom_color_div');
+            
+            if (colorSelect && customColorDiv) {
+                colorSelect.addEventListener('change', function() {
+                    if (this.value === 'custom') {
+                        customColorDiv.classList.add('show');
+                        document.getElementById('custom_vehicle_color').required = true;
+                    } else {
+                        customColorDiv.classList.remove('show');
+                        document.getElementById('custom_vehicle_color').required = false;
+                    }
+                });
+            }
+            
+            // Handle vehicle type selection
+            const typeSelect = document.getElementById('vehicle_type');
+            const customTypeDiv = document.getElementById('custom_type_div');
+            
+            if (typeSelect && customTypeDiv) {
+                typeSelect.addEventListener('change', function() {
+                    if (this.value === 'custom') {
+                        customTypeDiv.classList.add('show');
+                        document.getElementById('custom_vehicle_type').required = true;
+                    } else {
+                        customTypeDiv.classList.remove('show');
+                        document.getElementById('custom_vehicle_type').required = false;
+                    }
+                });
+            }
+        }
+        
+        // Camera functions
+        async function startCamera() {
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: 'environment', // Back camera
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = document.getElementById('camera-preview');
+                video.srcObject = currentStream;
+                video.style.display = 'block';
+                
+                document.getElementById('start-camera-btn').style.display = 'none';
+                document.getElementById('capture-btn').style.display = 'inline-block';
+                document.getElementById('stop-camera-btn').style.display = 'inline-block';
+                
+            } catch (error) {
+                console.error('Camera error:', error);
+                alert('Σφάλμα πρόσβασης στην κάμερα: ' + error.message);
+            }
+        }
+        
+        function capturePhoto() {
+            const video = document.getElementById('camera-preview');
+            const canvas = document.getElementById('photo-canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+            
+            const photoData = canvas.toDataURL('image/jpeg', 0.8);
+            document.getElementById('photo_data').value = photoData;
+            
+            // Show preview
+            const preview = document.getElementById('photo-preview');
+            if (preview) {
+                preview.src = photoData;
+                preview.style.display = 'block';
+            }
+            
+            stopCamera();
+            
+            // Show success message
+            const photoStatus = document.getElementById('photo-status');
+            if (photoStatus) {
+                photoStatus.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Φωτογραφία καταγράφηκε!';
+            }
+        }
+        
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+            
+            const video = document.getElementById('camera-preview');
+            video.style.display = 'none';
+            video.srcObject = null;
+            
+            document.getElementById('start-camera-btn').style.display = 'inline-block';
+            document.getElementById('capture-btn').style.display = 'none';
+            document.getElementById('stop-camera-btn').style.display = 'none';
+        }
+        
+        // Initialize signature pad
+        function initSignaturePad() {
+            const canvas = document.getElementById('signature-canvas');
+            if (canvas) {
+                signaturePad = new SignaturePad(canvas, {
+                    backgroundColor: 'rgba(255, 255, 255, 0)',
+                    penColor: 'rgb(0, 0, 0)',
+                    minWidth: 1,
+                    maxWidth: 3
+                });
+                
+                // Resize canvas
+                function resizeCanvas() {
+                    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                    canvas.width = canvas.offsetWidth * ratio;
+                    canvas.height = canvas.offsetHeight * ratio;
+                    canvas.getContext('2d').scale(ratio, ratio);
+                    signaturePad.clear();
+                }
+                
+                window.addEventListener('resize', resizeCanvas);
+                resizeCanvas();
+            }
+        }
+        
+        function clearSignature() {
+            if (signaturePad) {
+                signaturePad.clear();
+            }
+        }
+        
+        // Form submission handler
+        function handleFormSubmission() {
+            // Save signature data
+            const signatureCanvas = document.getElementById('signature-canvas');
+            const signatureInput = document.getElementById('signature_data');
+            
+            if (signaturePad && signatureInput) {
+                if (!signaturePad.isEmpty()) {
+                    signatureInput.value = signaturePad.toDataURL();
+                }
+            }
+            
+            showLoading();
+            return true;
+        }
+        
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initDynamicFields();
+            initSignaturePad();
+            
+            // Auto-hide alerts after 5 seconds
+            setTimeout(function() {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(function(alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                });
+            }, 5000);
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (currentStream) {
+                stopCamera();
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

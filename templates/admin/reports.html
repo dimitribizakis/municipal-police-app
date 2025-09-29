@@ -1,0 +1,351 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Αναφορές και Στατιστικά - Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="text-primary">
+            <i class="fas fa-chart-bar me-2"></i>Αναφορές και Στατιστικά
+        </h2>
+        <p class="text-muted">Δημιουργία εκτυπώσιμων αναφορών με στατιστικά παραβάσεων</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter me-2"></i>Δημιουργία Αναφοράς
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin_generate_report') }}" target="_blank">
+                    
+                    <!-- Τύπος Αναφοράς -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-file-alt me-2"></i>Τύπος Αναφοράς
+                            </h6>
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="report_type" 
+                                               id="daily_report" value="daily" checked>
+                                        <label class="form-check-label" for="daily_report">
+                                            <i class="fas fa-calendar-day me-1"></i>Ημερήσια Αναφορά
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="report_type" 
+                                               id="monthly_report" value="monthly">
+                                        <label class="form-check-label" for="monthly_report">
+                                            <i class="fas fa-calendar-alt me-1"></i>Μηνιαία Αναφορά
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="report_type" 
+                                               id="custom_report" value="custom">
+                                        <label class="form-check-label" for="custom_report">
+                                            <i class="fas fa-calendar-check me-1"></i>Προσαρμοσμένη Περίοδος
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Χρονικό Διάστημα -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-calendar me-2"></i>Χρονικό Διάστημα
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="start_date" class="form-label">
+                                <i class="fas fa-calendar-plus me-1"></i>Από Ημερομηνία *
+                            </label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" 
+                                   value="{{ (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="end_date" class="form-label">
+                                <i class="fas fa-calendar-minus me-1"></i>Έως Ημερομηνία *
+                            </label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" 
+                                   value="{{ datetime.now().strftime('%Y-%m-%d') }}" required>
+                        </div>
+                    </div>
+
+                    <!-- Φίλτρα -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-funnel-dollar me-2"></i>Φίλτρα
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="officer_id" class="form-label">
+                                <i class="fas fa-user-shield me-1"></i>Αστυνομικός
+                            </label>
+                            <select class="form-select" id="officer_id" name="officer_id">
+                                <option value="all">Όλοι οι Αστυνομικοί</option>
+                                <!-- Officers will be loaded dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Κουμπιά -->
+                    <div class="row">
+                        <div class="col-12 text-center">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-file-download me-2"></i>Δημιουργία Αναφοράς
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>Γρήγορα Στατιστικά
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">Σήμερα</small>
+                    <div class="d-flex justify-content-between">
+                        <span>Παραβάσεις:</span>
+                        <span class="badge bg-primary" id="today-violations">-</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <small class="text-muted">Αυτή την εβδομάδα</small>
+                    <div class="d-flex justify-content-between">
+                        <span>Παραβάσεις:</span>
+                        <span class="badge bg-info" id="week-violations">-</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <small class="text-muted">Αυτόν τον μήνα</small>
+                    <div class="d-flex justify-content-between">
+                        <span>Παραβάσεις:</span>
+                        <span class="badge bg-success" id="month-violations">-</span>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="mb-3">
+                    <small class="text-muted">Πιο ενεργός αστυνομικός</small>
+                    <div id="top-officer">
+                        <small class="text-muted">Φόρτωση...</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <small class="text-muted">Συχνότερη παράβαση</small>
+                    <div id="top-violation">
+                        <small class="text-muted">Φόρτωση...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Γρήγορες Αναφορές -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>Γρήγορες Αναφορές
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="generateQuickReport('today')">
+                        <i class="fas fa-calendar-day me-1"></i>Σήμερα
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="generateQuickReport('week')">
+                        <i class="fas fa-calendar-week me-1"></i>Αυτή την Εβδομάδα
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="generateQuickReport('month')">
+                        <i class="fas fa-calendar-alt me-1"></i>Αυτόν τον Μήνα
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load officers for dropdown
+    loadOfficers();
+    
+    // Load quick stats
+    loadQuickStats();
+    
+    // Set up date restrictions
+    setupDateInputs();
+    
+    // Handle report type changes
+    const reportTypeInputs = document.querySelectorAll('input[name="report_type"]');
+    reportTypeInputs.forEach(input => {
+        input.addEventListener('change', handleReportTypeChange);
+    });
+});
+
+function loadOfficers() {
+    // This would typically be an AJAX call
+    fetch('/api/officers')
+        .then(response => response.json())
+        .then(officers => {
+            const select = document.getElementById('officer_id');
+            select.innerHTML = '<option value="all">Όλοι οι Αστυνομικοί</option>';
+            
+            officers.forEach(officer => {
+                const option = document.createElement('option');
+                option.value = officer.id;
+                option.textContent = officer.full_name;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading officers:', error);
+        });
+}
+
+function loadQuickStats() {
+    // Load today's violations
+    const today = new Date().toISOString().split('T')[0];
+    
+    // These would be AJAX calls to get real stats
+    // For now, showing placeholder functionality
+    
+    // Simulate loading stats
+    setTimeout(() => {
+        document.getElementById('today-violations').textContent = '5';
+        document.getElementById('week-violations').textContent = '23';
+        document.getElementById('month-violations').textContent = '87';
+        
+        document.getElementById('top-officer').innerHTML = 
+            '<strong>Νικόλαος Παπαδόπουλος</strong><br><small class="text-muted">15 παραβάσεις</small>';
+        
+        document.getElementById('top-violation').innerHTML = 
+            '<strong>Παράνομη Στάθμευση</strong><br><small class="text-muted">45% του συνόλου</small>';
+    }, 1000);
+}
+
+function setupDateInputs() {
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    
+    // End date cannot be in the future
+    const today = new Date().toISOString().split('T')[0];
+    endDateInput.max = today;
+    
+    // Start date cannot be after end date
+    endDateInput.addEventListener('change', function() {
+        startDateInput.max = this.value;
+    });
+    
+    startDateInput.addEventListener('change', function() {
+        endDateInput.min = this.value;
+    });
+}
+
+function handleReportTypeChange(event) {
+    const reportType = event.target.value;
+    const startDate = document.getElementById('start_date');
+    const endDate = document.getElementById('end_date');
+    const today = new Date();
+    
+    switch(reportType) {
+        case 'daily':
+            startDate.value = today.toISOString().split('T')[0];
+            endDate.value = today.toISOString().split('T')[0];
+            break;
+            
+        case 'monthly':
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            startDate.value = firstDayOfMonth.toISOString().split('T')[0];
+            endDate.value = today.toISOString().split('T')[0];
+            break;
+            
+        case 'custom':
+            // Keep current values
+            break;
+    }
+}
+
+function generateQuickReport(period) {
+    const today = new Date();
+    let startDate, endDate;
+    
+    switch(period) {
+        case 'today':
+            startDate = endDate = today.toISOString().split('T')[0];
+            break;
+            
+        case 'week':
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - 7);
+            startDate = weekStart.toISOString().split('T')[0];
+            endDate = today.toISOString().split('T')[0];
+            break;
+            
+        case 'month':
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            startDate = monthStart.toISOString().split('T')[0];
+            endDate = today.toISOString().split('T')[0];
+            break;
+    }
+    
+    // Create a form and submit it
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("admin_generate_report") }}';
+    form.target = '_blank';
+    
+    const inputs = [
+        { name: 'report_type', value: 'custom' },
+        { name: 'start_date', value: startDate },
+        { name: 'end_date', value: endDate },
+        { name: 'officer_id', value: 'all' }
+    ];
+    
+    inputs.forEach(input => {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = input.name;
+        hiddenInput.value = input.value;
+        form.appendChild(hiddenInput);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+</script>
+{% endblock %}

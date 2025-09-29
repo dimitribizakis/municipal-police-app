@@ -1,0 +1,194 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Διαχείριση Χρηστών - Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="text-primary">
+            <i class="fas fa-users me-2"></i>Διαχείριση Χρηστών
+        </h2>
+        <p class="text-muted">Προσθήκη και διαχείριση δημοτικών αστυνομικών</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('admin_add_user') }}" class="btn btn-success">
+            <i class="fas fa-user-plus me-1"></i>Νέος Χρήστης
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Λίστα Χρηστών
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if users %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Όνομα Χρήστη</th>
+                                <th>Ονοματεπώνυμο</th>
+                                <th>Βαθμός</th>
+                                <th>Email</th>
+                                <th>Ρόλος</th>
+                                <th>Κατάσταση</th>
+                                <th>Ημερομηνία Δημιουργίας</th>
+                                <th>Παραβάσεις</th>
+                                <th>Ενέργειες</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr class="{{ 'table-light' if not user.is_active else '' }}">
+                                <td><span class="badge bg-primary">#{{ user.id }}</span></td>
+                                <td><strong>{{ user.username }}</strong></td>
+                                <td>{{ user.first_name }} {{ user.last_name }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ user.rank }}</span>
+                                </td>
+                                <td>
+                                    <small>{{ user.email }}</small>
+                                </td>
+                                <td>
+                                    {% if user.role == 'admin' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-crown me-1"></i>Admin
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-shield-alt me-1"></i>Officer
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user.is_active %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>Ενεργός
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-times me-1"></i>Ανενεργός
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ user.created_at.strftime('%d/%m/%Y') }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">
+                                        {{ user.violations|length }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        {% if user.id != session.user_id %}
+                                        <button type="button" class="btn btn-outline-warning" 
+                                                onclick="toggleUserStatus({{ user.id }}, {{ user.is_active|tojson }})">
+                                            {% if user.is_active %}
+                                                <i class="fas fa-pause"></i>
+                                            {% else %}
+                                                <i class="fas fa-play"></i>
+                                            {% endif %}
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary" 
+                                                onclick="editUser({{ user.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% else %}
+                                        <span class="badge bg-info">Εσείς</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Δεν υπάρχουν χρήστες</p>
+                    <a href="{{ url_for('admin_add_user') }}" class="btn btn-primary">
+                        <i class="fas fa-user-plus me-1"></i>Προσθήκη Πρώτου Χρήστη
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Statistics -->
+{% if users %}
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3>{{ users|selectattr('is_active')|list|length }}</h3>
+                <p class="mb-0">Ενεργοί Χρήστες</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3>{{ users|selectattr('role', 'equalto', 'officer')|list|length }}</h3>
+                <p class="mb-0">Δημοτικοί Αστυνομικοί</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h3>{{ users|selectattr('role', 'equalto', 'admin')|list|length }}</h3>
+                <p class="mb-0">Διαχειριστές</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleUserStatus(userId, currentStatus) {
+    const action = currentStatus ? 'απενεργοποίηση' : 'ενεργοποίηση';
+    
+    if (confirm(`Είστε σίγουροι για την ${action} αυτού του χρήστη;`)) {
+        // Here you would typically make an AJAX call to toggle status
+        fetch(`/admin/users/${userId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: currentStatus ? 'deactivate' : 'activate'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Σφάλμα: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Σφάλμα δικτύου');
+        });
+    }
+}
+
+function editUser(userId) {
+    // Here you would typically open an edit modal or redirect to edit page
+    window.location.href = `/admin/users/${userId}/edit`;
+}
+</script>
+{% endblock %}
