@@ -59,6 +59,7 @@
 
 ## 🚀 Εγκατάσταση & Εκτέλεση
 
+### Τοπικά (Local Development)
 ```bash
 # Εγκατάσταση εξαρτήσεων
 pip install flask flask-sqlalchemy pillow
@@ -68,6 +69,22 @@ python app.py
 ```
 
 Η εφαρμογή θα είναι διαθέσιμη στη διεύθυνση: `http://localhost:5000`
+
+### 🌐 Production Deployment (Railway.app)
+
+**Για παραγωγική χρήση, δείτε τον αναλυτικό οδηγό: [`DEPLOYMENT_RAILWAY.md`](DEPLOYMENT_RAILWAY.md)**
+
+**Τα απαραίτητα αρχεία έχουν ήδη δημιουργηθεί:**
+- `requirements.txt` - Python dependencies
+- `Procfile` - Production server configuration  
+- `railway.json` - Railway deployment settings
+
+**Σύντομα βήματα:**
+1. Ανέβασμα στο GitHub
+2. Σύνδεση με Railway.app  
+3. Αυτόματο deployment!
+
+🔗 **Demo Online**: Μετά το deployment θα έχεις δικό σου URL (π.χ. `your-app.railway.app`)
 
 ## 📁 Δομή Αρχείων
 
