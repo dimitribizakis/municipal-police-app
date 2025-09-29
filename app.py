@@ -38,10 +38,6 @@ def initialize_database():
     except Exception as e:
         print(f"Database initialization error: {e}")
 
-# Αρχικοποίηση κατά το startup (για production)
-with app.app_context():
-    initialize_database()
-
 # ======================== DATABASE MODELS ========================
 
 class User(db.Model):
@@ -675,6 +671,12 @@ def create_default_dynamic_fields():
             db.session.add(field)
     
     db.session.commit()
+
+# ======================== PRODUCTION INITIALIZATION ========================
+# Αρχικοποίηση για production environment (όταν δεν τρέχει __name__ == '__main__')
+if __name__ != '__main__':
+    with app.app_context():
+        initialize_database()
 
 if __name__ == '__main__':
     with app.app_context():
