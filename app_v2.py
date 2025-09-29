@@ -20,6 +20,28 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 db = SQLAlchemy(app)
 
+# ======================== DATABASE INITIALIZATION ========================
+def initialize_database():
+    """Αρχικοποίηση βάσης δεδομένων για production"""
+    try:
+        # Δημιουργία όλων των πινάκων
+        db.create_all()
+        
+        # Δημιουργία default admin μόνο αν δεν υπάρχει
+        if not User.query.filter_by(username='admin').first():
+            create_default_admin()
+        
+        # Δημιουργία default dynamic fields μόνο αν δεν υπάρχουν
+        if not DynamicField.query.first():
+            create_default_dynamic_fields()
+            
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+
+# Αρχικοποίηση κατά το startup (για production)
+with app.app_context():
+    initialize_database()
+
 # ======================== DATABASE MODELS ========================
 
 class User(db.Model):
