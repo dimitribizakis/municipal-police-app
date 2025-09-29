@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<!-- Signature Pad CSS -->
+<style>
+    .signature-container {
+        position: relative;
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        background: white;
+        overflow: hidden;
+    }
+    
+    .signature-pad {
+        width: 100%;
+        height: 200px;
+        cursor: crosshair;
+    }
+    
+    .signature-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+    }
+    
+    .violation-item {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 5px;
+        transition: all 0.2s;
+    }
+    
+    .violation-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .violation-item input[type="checkbox"] {
+        margin-right: 10px;
+    }
+    
+    .required-field {
+        position: relative;
+    }
+    
+    .required-field::after {
+        content: '*';
+        color: red;
+        margin-left: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<form id="violationForm" method="POST" action="{{ url_for('submit_violation') }}" enctype="multipart/form-data">
+    
+    <!-- Στοιχεία Οχήματος -->
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fas fa-car me-2"></i>Στοιχεία Οχήματος</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="license_plate" class="form-label required-field">Αριθμός Κυκλοφορίας</label>
+                    <input type="text" class="form-control" id="license_plate" name="license_plate" required 
+                           placeholder="π.χ. ABC-1234" style="text-transform: uppercase;">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="vehicle_brand" class="form-label required-field">Μάρκα Οχήματος</label>
+                    <input type="text" class="form-control" id="vehicle_brand" name="vehicle_brand" required
+                           placeholder="π.χ. Toyota, BMW, Mercedes">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="vehicle_color" class="form-label required-field">Χρώμα Οχήματος</label>
+                    <select class="form-select" id="vehicle_color" name="vehicle_color" required>
+                        <option value="">Επιλέξτε χρώμα</option>
+                        <option value="Άσπρο">Άσπρο</option>
+                        <option value="Μαύρο">Μαύρο</option>
+                        <option value="Γκρι">Γκρι</option>
+                        <option value="Κόκκινο">Κόκκινο</option>
+                        <option value="Μπλε">Μπλε</option>
+                        <option value="Πράσινο">Πράσινο</option>
+                        <option value="Κίτρινο">Κίτρινο</option>
+                        <option value="Καφέ">Καφέ</option>
+                        <option value="Ασημί">Ασημί</option>
+                        <option value="Άλλο">Άλλο</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="vehicle_type" class="form-label required-field">Τύπος Οχήματος</label>
+                    <select class="form-select" id="vehicle_type" name="vehicle_type" required>
+                        <option value="">Επιλέξτε τύπο</option>
+                        <option value="ΙΧΕ">ΙΧΕ (Ιδιωτικό Χρήσης Επιβατικό)</option>
+                        <option value="ΦΙΧ">ΦΙΧ (Φορτηγό Ιδιωτικής Χρήσης)</option>
+                        <option value="ΜΟΤΟ">ΜΟΤΟ (Μοτοσικλέτα)</option>
+                        <option value="ΜΟΤΑ">ΜΟΤΑ (Μοτοποδήλατο)</option>
+                        <option value="ΤΑΧΙ">ΤΑΧΙ</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Στοιχεία Παράβασης -->
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fas fa-exclamation-triangle me-2"></i>Στοιχεία Παράβασης</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="violation_datetime" class="form-label required-field">Ώρα Παράβασης</label>
+                    <input type="datetime-local" class="form-control" id="violation_datetime" name="violation_datetime" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="officer_name" class="form-label">Όνομα Αστυνομικού</label>
+                    <input type="text" class="form-control" id="officer_name" name="officer_name" 
+                           placeholder="Όνομα του Δημοτικού Αστυνομικού">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label for="street_name" class="form-label required-field">Οδός</label>
+                    <input type="text" class="form-control" id="street_name" name="street_name" required
+                           placeholder="π.χ. Πατησίων">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="street_number" class="form-label">Αριθμός</label>
+                    <input type="text" class="form-control" id="street_number" name="street_number" 
+                           placeholder="π.χ. 123">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label required-field">Παραβάσεις</label>
+                <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                    {% for violation in violations %}
+                    <div class="violation-item p-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" 
+                                   name="violations" value="{{ violation.code }}" 
+                                   id="violation_{{ loop.index }}">
+                            <label class="form-check-label" for="violation_{{ loop.index }}">
+                                <strong>{{ violation.code }}</strong> - {{ violation.description }}
+                                {% if violation.fine_cars %}
+                                <small class="text-muted">(Πρόστιμο: {{ violation.fine_cars }}€)</small>
+                                {% endif %}
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Αφαίρεση Στοιχείων -->
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fas fa-clipboard-check me-2"></i>Αφαίρεση Στοιχείων</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="plates_removed" name="plates_removed">
+                        <label class="form-check-label" for="plates_removed">
+                            Αφαίρεση Πινακίδων
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="license_removed" name="license_removed">
+                        <label class="form-check-label" for="license_removed">
+                            Αφαίρεση Άδειας Οδήγησης
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="vehicle_license_removed" name="vehicle_license_removed">
+                        <label class="form-check-label" for="vehicle_license_removed">
+                            Αφαίρεση Άδειας Κυκλοφορίας
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Φωτογραφία Οχήματος -->
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fas fa-camera me-2"></i>Φωτογραφία Οχήματος</h4>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <input type="file" class="form-control" id="vehicle_photo" name="vehicle_photo" 
+                       accept="image/*" onchange="previewImage(this)">
+                <small class="form-text text-muted">Προαιρετικό - Υποστηρίζονται JPG, PNG (μέγιστο 16MB)</small>
+            </div>
+            <div id="imagePreview"></div>
+        </div>
+    </div>
+
+    <!-- Στοιχεία Οδηγού -->
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fas fa-user me-2"></i>Στοιχεία Οδηγού/Παραβάτη</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="driver_lastname" class="form-label">Επώνυμο</label>
+                    <input type="text" class="form-control" id="driver_lastname" name="driver_lastname">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="driver_firstname" class="form-label">Όνομα</label>
+                    <input type="text" class="form-control" id="driver_firstname" name="driver_firstname">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="driver_fathername" class="form-label">Όνομα Πατρός</label>
+                    <input type="text" class="form-control" id="driver_fathername" name="driver_fathername">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="driver_tax_number" class="form-label">ΑΦΜ</label>
+                    <input type="text" class="form-control" id="driver_tax_number" name="driver_tax_number"
+                           pattern="[0-9]{9}" maxlength="9" placeholder="9 ψηφία">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Υπογραφή -->
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fas fa-signature me-2"></i>Υπογραφή Οδηγού/Παραβάτη</h4>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">Παρακαλώ υπογράψτε στο παρακάτω πλαίσιο:</p>
+            <div class="signature-container">
+                <div class="signature-controls">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSignature()">
+                        <i class="fas fa-eraser me-1"></i>Καθαρισμός
+                    </button>
+                </div>
+                <canvas id="signaturePad" class="signature-pad"></canvas>
+            </div>
+            <input type="hidden" id="signature" name="signature">
+        </div>
+    </div>
+
+    <!-- Κουμπιά Υποβολής -->
+    <div class="card">
+        <div class="card-body text-center">
+            <button type="submit" class="btn btn-primary btn-lg me-3">
+                <i class="fas fa-save me-2"></i>Καταχώρηση Παράβασης
+            </button>
+            <button type="reset" class="btn btn-secondary btn-lg">
+                <i class="fas fa-undo me-2"></i>Καθαρισμός Φόρμας
+            </button>
+        </div>
+    </div>
+
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Υπογραφή pad
+let signaturePad;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Αρχικοποίηση signature pad
+    const canvas = document.getElementById('signaturePad');
+    
+    function resizeCanvas() {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext('2d').scale(ratio, ratio);
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    
+    signaturePad = new SignaturePad(canvas, {
+        backgroundColor: 'rgb(255, 255, 255)',
+        penColor: 'rgb(0, 0, 0)',
+        minWidth: 1,
+        maxWidth: 3,
+    });
+    
+    // Ρύθμιση τρέχουσας ημερομηνίας/ώρας
+    const now = new Date();
+    const localDateTime = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('violation_datetime').value = localDateTime;
+});
+
+// Καθαρισμός υπογραφής
+function clearSignature() {
+    signaturePad.clear();
+}
+
+// Preview εικόνας
+function previewImage(input) {
+    const preview = document.getElementById('imagePreview');
+    preview.innerHTML = '';
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'photo-preview img-thumbnail';
+            preview.appendChild(img);
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Υποβολή φόρμας
+document.getElementById('violationForm').addEventListener('submit', function(e) {
+    // Αποθήκευση υπογραφής αν υπάρχει
+    if (signaturePad && !signaturePad.isEmpty()) {
+        document.getElementById('signature').value = signaturePad.toDataURL();
+    }
+    
+    // Έλεγχος ότι επιλέχθηκε τουλάχιστον μία παράβαση
+    const violations = document.querySelectorAll('input[name="violations"]:checked');
+    if (violations.length === 0) {
+        e.preventDefault();
+        alert('Παρακαλώ επιλέξτε τουλάχιστον μία παράβαση.');
+        return false;
+    }
+    
+    return true;
+});
+
+// Reset φόρμας
+document.querySelector('button[type="reset"]').addEventListener('click', function() {
+    if (signaturePad) {
+        signaturePad.clear();
+    }
+    document.getElementById('imagePreview').innerHTML = '';
+});
+</script>
+
+<!-- Signature Pad Library -->
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+{% endblock %}
