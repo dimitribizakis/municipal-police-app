@@ -38,7 +38,7 @@
 
 <!-- Statistics Cards -->
 <div class="row mb-4">
-    <div class="col-md-4 mb-3">
+    <div class="col-lg-3 col-md-6 mb-3">
         <div class="card bg-primary text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
@@ -54,7 +54,7 @@
         </div>
     </div>
     
-    <div class="col-md-4 mb-3">
+    <div class="col-lg-3 col-md-6 mb-3">
         <div class="card bg-success text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
@@ -70,7 +70,7 @@
         </div>
     </div>
     
-    <div class="col-md-4 mb-3">
+    <div class="col-lg-3 col-md-6 mb-3">
         <div class="card bg-warning text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
@@ -80,6 +80,22 @@
                     </div>
                     <div class="align-self-center">
                         <i class="fas fa-calendar-day fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">{{ "%.2f"|format(total_fines_amount|float) }}€</h3>
+                        <p class="mb-0">Συνολικά Πρόστιμα</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-euro-sign fa-2x opacity-75"></i>
                     </div>
                 </div>
             </div>
@@ -128,23 +144,6 @@
     </div>
 </div>
 
-<!-- ΠΡΟΣΩΡΙΝΟ: Migration προστίμων -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="alert alert-warning d-flex justify-content-between align-items-center">
-            <div>
-                <i class="fas fa-database me-2"></i>
-                <strong>Migration Προστίμων:</strong> 
-                Προσθήκη άρθρων και ποσών στις παραβάσεις
-                <small class="d-block text-muted">⚠️ Προσωρινό κουμπί - Διαγραφή μετά τη χρήση!</small>
-            </div>
-            <button onclick="confirmMigration()" class="btn btn-warning">
-                <i class="fas fa-cogs me-1"></i>Εκτέλεση Migration
-            </button>
-        </div>
-    </div>
-</div>
-
 <!-- Recent Violations -->
 <div class="row">
     <div class="col-12">
@@ -165,6 +164,7 @@
                                 <th>Ημερομηνία</th>
                                 <th>Ώρα</th>
                                 <th>Τοποθεσία</th>
+                                <th>Πρόστιμο</th>
                                 <th>Αστυνομικός</th>
                                 <th>Ενέργειες</th>
                             </tr>
@@ -177,14 +177,23 @@
                                 <td>{{ violation.violation_date.strftime('%d/%m/%Y') }}</td>
                                 <td>{{ violation.violation_time.strftime('%H:%M') }}</td>
                                 <td>{{ violation.street }} {{ violation.street_number }}</td>
+                                <td>
+                                    {% if violation.total_fine_amount %}
+                                        <span class="text-success fw-bold">
+                                            {{ "%.2f"|format(violation.total_fine_amount|float) }}€
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
                                 <td>{{ violation.officer.full_name }}</td>
                                 <td>
                                     <a href="{{ url_for('view_violation', violation_id=violation.id) }}" 
-                                       class="btn btn-sm btn-outline-primary">
+                                       class="btn btn-sm btn-outline-primary" title="Προβολή">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     <a href="{{ url_for('admin_edit_violation', violation_id=violation.id) }}" 
-                                       class="btn btn-sm btn-outline-warning">
+                                       class="btn btn-sm btn-outline-warning" title="Επεξεργασία">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                 </td>
@@ -210,13 +219,18 @@
     </div>
 </div>
 
-<script>
-function confirmMigration() {
-    if (confirm('⚠️ ΠΡΟΣΟΧΗ!\n\nΑυτό θα κάνει αλλαγές στη βάση δεδομένων.\n\nΣίγουρα θέλετε να συνεχίσετε;')) {
-        if (confirm('🔄 Τελική επιβεβαίωση!\n\nΘα προστεθούν νέα πεδία στις παραβάσεις.\nΑυτή η ενέργεια δεν μπορεί να αναιρεθεί.\n\nΠροχωράμε;')) {
-            window.location.href = '{{ url_for("migrate_fines") }}';
-        }
-    }
-}
-</script>
+<!-- Success Message for Migration Completion -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-success d-flex align-items-center">
+            <i class="fas fa-check-circle fa-2x me-3"></i>
+            <div>
+                <h6 class="alert-heading mb-1">✅ Migration Προστίμων Ολοκληρώθηκε!</h6>
+                <p class="mb-0">Το σύστημα τώρα υπολογίζει αυτόματα τα ποσά προστίμων και τα άρθρα για όλες τις παραβάσεις. 
+                Όλες οι νέες παραβάσεις θα περιλαμβάνουν αυτόματα τα σχετικά πρόστιμα.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
