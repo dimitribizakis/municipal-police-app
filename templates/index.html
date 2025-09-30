@@ -422,6 +422,7 @@
         const container = canvas.parentElement;
         const containerWidth = container.offsetWidth - 40; // Account for padding
         
+        // Set both logical and visual dimensions to be the same
         canvas.width = containerWidth;
         canvas.height = 200;
         canvas.style.width = containerWidth + 'px';
@@ -439,32 +440,40 @@
         canvas.style.cursor = 'crosshair';
 
         console.log('Signature pad initialized successfully');
+        console.log('Canvas logical size:', canvas.width, 'x', canvas.height);
+        console.log('Canvas visual size:', canvas.offsetWidth, 'x', canvas.offsetHeight);
 
-        // Mouse events
+        // Mouse events with proper scaling
         canvas.addEventListener('mousedown', function(e) {
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
             startDrawing({offsetX: x, offsetY: y});
         });
         
         canvas.addEventListener('mousemove', function(e) {
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
             draw({offsetX: x, offsetY: y});
         });
         
         canvas.addEventListener('mouseup', stopDrawing);
         canvas.addEventListener('mouseleave', stopDrawing);
 
-        // Touch events for mobile
+        // Touch events for mobile with proper scaling
         canvas.addEventListener('touchstart', function(e) {
             e.preventDefault();
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
             
             startDrawing({offsetX: x, offsetY: y});
         });
@@ -473,8 +482,10 @@
             e.preventDefault();
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
             
             draw({offsetX: x, offsetY: y});
         });
