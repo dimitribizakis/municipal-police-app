@@ -708,6 +708,17 @@ def api_get_dynamic_fields(field_type):
     
     return jsonify([{'id': f.id, 'value': f.value} for f in fields])
 
+@app.route('/api/officers')
+@admin_required
+def api_get_officers():
+    """API για λήψη αστυνομικών για reports"""
+    officers = User.query.filter_by(role='officer', is_active=True).all()
+    
+    return jsonify([{
+        'id': officer.id, 
+        'full_name': f"{officer.first_name} {officer.last_name}"
+    } for officer in officers])
+
 # ======================== INITIALIZATION ========================
 
 def create_default_admin():
