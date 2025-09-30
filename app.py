@@ -4,7 +4,7 @@ import base64
 from datetime import datetime, timedelta
 from functools import wraps
 from decimal import Decimal
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, render_template_string
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -522,17 +522,23 @@ def admin_dashboard():
                              today_violations=today_violations,
                              recent_violations=recent_violations)
     except Exception as e:
-        flash(f'Σφάλμα φόρτωσης dashboard: {str(e)}', 'error')
-        return redirect(url_for('index'))
+        flash(f'Σφάλμα κατά τη φόρτωση dashboard: {str(e)}', 'error')
+        return redirect(url_for('login'))
 
 @app.route('/admin/users')
 @admin_required
 def admin_users():
-    """Διαχείριση Χρηστών"""
-    users = User.query.order_by(User.created_at.desc()).all()
+    """Διαχείριση χρηστών"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    users = User.query.order_by(User.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
     return render_template('admin/users.html', users=users)
 
-@app.route('/admin/users/add', methods=['GET', 'POST'])
+@app.route('/admin/add_user', methods=['GET', 'POST'])
 @admin_required
 def admin_add_user():
     """Προσθήκη νέου χρήστη"""
@@ -544,19 +550,19 @@ def admin_add_user():
             first_name = request.form.get('first_name')
             last_name = request.form.get('last_name')
             rank = request.form.get('rank')
-            role = request.form.get('role', 'officer')
+            role = request.form.get('role')
             
-            # Έλεγχος αν υπάρχει ήδη το username ή email
-            existing_user = User.query.filter(
-                (User.username == username) | (User.email == email)
-            ).first()
+            # Έλεγχος αν υπάρχει ήδη
+            if User.query.filter_by(username=username).first():
+                flash('Το όνομα χρήστη υπάρχει ήδη.', 'error')
+                return render_template('admin/add_user.html')
             
-            if existing_user:
-                flash('Το όνομα χρήστη ή email υπάρχει ήδη.', 'error')
-                return redirect(url_for('admin_add_user'))
+            if User.query.filter_by(email=email).first():
+                flash('Το email υπάρχει ήδη.', 'error')
+                return render_template('admin/add_user.html')
             
             # Δημιουργία νέου χρήστη
-            new_user = User(
+            user = User(
                 username=username,
                 email=email,
                 first_name=first_name,
@@ -564,12 +570,12 @@ def admin_add_user():
                 rank=rank,
                 role=role
             )
-            new_user.set_password(password)
+            user.set_password(password)
             
-            db.session.add(new_user)
+            db.session.add(user)
             db.session.commit()
             
-            flash(f'Ο χρήστης {new_user.full_name} δημιουργήθηκε επιτυχώς!', 'success')
+            flash(f'Ο χρήστης {username} δημιουργήθηκε επιτυχώς!', 'success')
             return redirect(url_for('admin_users'))
             
         except Exception as e:
@@ -581,9 +587,9 @@ def admin_add_user():
 @app.route('/admin/violations')
 @admin_required
 def admin_violations():
-    """Admin - Όλες οι παραβάσεις"""
+    """Διαχείριση παραβάσεων"""
     page = request.args.get('page', 1, type=int)
-    per_page = 50
+    per_page = 20
     
     violations = Violation.query.order_by(Violation.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
@@ -591,57 +597,33 @@ def admin_violations():
     
     return render_template('admin/violations.html', violations=violations)
 
-@app.route('/admin/violation/<int:violation_id>/edit', methods=['GET', 'POST'])
+@app.route('/admin/edit_violation/<int:violation_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_violation(violation_id):
-    """Admin - Επεξεργασία παράβασης"""
+    """Επεξεργασία παράβασης"""
     violation = Violation.query.get_or_404(violation_id)
     
     if request.method == 'POST':
         try:
-            # Update all fields
+            # Ενημέρωση δεδομένων
             violation.license_plate = request.form.get('license_plate')
             violation.vehicle_brand = request.form.get('vehicle_brand')
             violation.vehicle_color = request.form.get('vehicle_color')
             violation.vehicle_type = request.form.get('vehicle_type')
-            
-            # Ημερομηνία και ώρα παράβασης (με έλεγχο για None και κενά strings)
-            violation_date_str = request.form.get('violation_date')
-            violation_time_str = request.form.get('violation_time')
-            
-            if violation_date_str and violation_date_str.strip():
-                violation.violation_date = datetime.strptime(violation_date_str.strip(), '%Y-%m-%d').date()
-            if violation_time_str and violation_time_str.strip():
-                violation.violation_time = datetime.strptime(violation_time_str.strip(), '%H:%M').time()
-            
             violation.street = request.form.get('street')
             violation.street_number = request.form.get('street_number')
             
+            # Παραβάσεις
             selected_violations = request.form.getlist('violations')
             violation.selected_violations = json.dumps(selected_violations)
             
+            # Επιτόπια μέτρα
             violation.plates_removed = 'plates_removed' in request.form
             violation.license_removed = 'license_removed' in request.form
             violation.registration_removed = 'registration_removed' in request.form
             
-            # Στοιχεία οδηγού (μόνο αν είναι παρών)
-            driver_present = 'driver_present' in request.form
-            
-            if driver_present:
-                violation.driver_last_name = request.form.get('driver_last_name')
-                violation.driver_first_name = request.form.get('driver_first_name')
-                violation.driver_father_name = request.form.get('driver_father_name')
-                violation.driver_afm = request.form.get('driver_afm')
-            else:
-                violation.driver_last_name = None
-                violation.driver_first_name = None
-                violation.driver_father_name = None
-                violation.driver_afm = None
-            
             violation.updated_at = datetime.utcnow()
             
-            
-            # Αποθήκευση αλλαγών
             db.session.commit()
             flash('Η παράβαση ενημερώθηκε επιτυχώς!', 'success')
             return redirect(url_for('admin_violations'))
@@ -654,7 +636,7 @@ def admin_edit_violation(violation_id):
     vehicle_colors = DynamicField.query.filter_by(field_type='vehicle_color', is_active=True).all()
     vehicle_types = DynamicField.query.filter_by(field_type='vehicle_type', is_active=True).all()
     
-    return render_template('admin/edit_violation.html',
+    return render_template('admin/edit_violation.html', 
                          violation=violation,
                          violations_list=violations_list,
                          vehicle_colors=vehicle_colors,
@@ -663,37 +645,32 @@ def admin_edit_violation(violation_id):
 @app.route('/admin/reports')
 @admin_required
 def admin_reports():
-    """Admin - Αναφορές και Στατιστικά"""
-    return render_template('admin/reports.html')
+    """Αναφορές"""
+    # Λίστα αστυνομικών για το dropdown
+    officers = User.query.filter_by(role='officer', is_active=True).all()
+    
+    return render_template('admin/reports.html', officers=officers)
 
-@app.route('/admin/reports/generate', methods=['POST'])
+@app.route('/admin/generate_report', methods=['POST'])
 @admin_required
 def admin_generate_report():
-    """Admin - Δημιουργία Αναφοράς"""
-    report_type = request.form.get('report_type')
-    start_date = request.form.get('start_date')
-    end_date = request.form.get('end_date')
-    officer_id = request.form.get('officer_id')
-    
+    """Δημιουργία αναφοράς"""
     try:
-        # Έλεγχος για κενά strings στις ημερομηνίες
-        if not start_date or not start_date.strip():
-            flash('Παρακαλώ επιλέξτε ημερομηνία έναρξης', 'error')
-            return redirect(url_for('admin_reports'))
-        if not end_date or not end_date.strip():
-            flash('Παρακαλώ επιλέξτε ημερομηνία λήξης', 'error')
-            return redirect(url_for('admin_reports'))
-            
-        start_date = datetime.strptime(start_date.strip(), '%Y-%m-%d')
-        end_date = datetime.strptime(end_date.strip(), '%Y-%m-%d')
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
+        report_type = request.form.get('report_type')
+        officer_id = request.form.get('officer_id')
+        
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
         
         # Base query
         query = Violation.query.filter(
-            Violation.violation_date >= start_date.date(),
-            Violation.violation_date <= end_date.date()
+            Violation.violation_date >= start_date,
+            Violation.violation_date <= end_date
         )
         
-        # Filter by officer if specified
+        # Φίλτρο ανά αστυνομικό
         if officer_id and officer_id != 'all':
             query = query.filter(Violation.officer_id == int(officer_id))
         
@@ -728,6 +705,217 @@ def admin_generate_report():
     except Exception as e:
         flash(f'Σφάλμα κατά τη δημιουργία αναφοράς: {str(e)}', 'error')
         return redirect(url_for('admin_reports'))
+
+# ======================== TEMPORARY MIGRATION ROUTE ========================
+
+@app.route('/admin/migrate-fines')
+@admin_required
+def migrate_fines():
+    """ΠΡΟΣΩΡΙΝΟ ROUTE: Εκτέλεση migration προστίμων - ΔΙΑΓΡΑΦΗ ΜΕΤΑ ΤΗ ΧΡΗΣΗ"""
+    try:
+        results = []
+        results.append("🚀 Έναρξη Migration: Προσθήκη πεδίων προστίμων παραβάσεων")
+        results.append("=" * 60)
+        
+        # Βήμα 1: Προσθήκη νέων στηλών
+        results.append("\n📊 Προσθήκη νέων στηλών στη βάση δεδομένων...")
+        
+        try:
+            # Για SQLite (development) - χρήση ALTER TABLE
+            if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN violation_articles TEXT"))
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN total_fine_amount NUMERIC(8,2)"))
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN fine_breakdown TEXT"))
+                results.append("✓ Στήλες προστέθηκαν επιτυχώς (SQLite)")
+            else:
+                # Για PostgreSQL (production)
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN IF NOT EXISTS violation_articles TEXT"))
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN IF NOT EXISTS total_fine_amount NUMERIC(8,2)"))
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN IF NOT EXISTS fine_breakdown TEXT"))
+                results.append("✓ Στήλες προστέθηκαν επιτυχώς (PostgreSQL)")
+                
+            db.session.commit()
+            
+        except Exception as e:
+            results.append(f"⚠️  Πιθανώς οι στήλες υπάρχουν ήδη ή υπήρξε σφάλμα: {e}")
+            db.session.rollback()
+
+        # Βήμα 2: Ενημέρωση υπαρχουσών παραβάσεων
+        results.append("\n📝 Ενημέρωση υπαρχουσών παραβάσεων...")
+        
+        # Φόρτωση δεδομένων παραβάσεων
+        violations_data = load_violations()
+        results.append(f"Φορτώθηκαν {len(violations_data)} παραβάσεις από violations.json")
+        
+        # Λήψη όλων των παραβάσεων που δεν έχουν ποσό
+        violations = db.session.execute(db.text("""
+            SELECT id, selected_violations, vehicle_type 
+            FROM violation 
+            WHERE total_fine_amount IS NULL OR total_fine_amount = 0
+        """)).fetchall()
+        
+        results.append(f"Βρέθηκαν {len(violations)} παραβάσεις για ενημέρωση")
+        
+        updated_count = 0
+        for violation_row in violations:
+            try:
+                violation_id = violation_row[0]
+                selected_violations_json = violation_row[1]
+                vehicle_type = violation_row[2]
+                
+                # Parse των επιλεγμένων παραβάσεων
+                try:
+                    selected_violations = json.loads(selected_violations_json)
+                except:
+                    selected_violations = []
+                
+                # Υπολογισμός προστίμων - λογική κατευθείαν εδώ
+                total_fine = 0.0
+                fine_breakdown = []
+                violation_articles = []
+                
+                for violation_index in selected_violations:
+                    try:
+                        violation_index = int(violation_index)
+                        if 0 <= violation_index < len(violations_data):
+                            violation_info = violations_data[violation_index]
+                            
+                            # Υπολογισμός ποσού ανάλογα με τον τύπο οχήματος
+                            fine_amount = 0.0
+                            
+                            # Έλεγχος αν είναι μοτοσικλέτα/μοτοποδήλατο
+                            is_motorcycle = any(keyword in vehicle_type.lower() for keyword in 
+                                              ['μοτο', 'moto', 'δίκυκλο', 'δικυκλο'])
+                            
+                            if is_motorcycle and 'fine_motorcycles' in violation_info:
+                                fine_amount = float(violation_info['fine_motorcycles'])
+                            elif 'fine_cars' in violation_info:
+                                fine_amount = float(violation_info['fine_cars'])
+                            
+                            if fine_amount > 0:
+                                total_fine += fine_amount
+                                fine_breakdown.append({
+                                    'description': violation_info['description'],
+                                    'amount': fine_amount
+                                })
+                                
+                                # Προσθήκη άρθρου αν υπάρχει
+                                if 'article' in violation_info and violation_info['article']:
+                                    violation_articles.append(violation_info['article'])
+                            
+                    except (ValueError, KeyError, IndexError) as e:
+                        continue
+                
+                # Ενημέρωση στη βάση
+                if total_fine > 0:
+                    db.session.execute(db.text("""
+                        UPDATE violation 
+                        SET total_fine_amount = :total_fine,
+                            violation_articles = :articles,
+                            fine_breakdown = :breakdown
+                        WHERE id = :violation_id
+                    """), {
+                        'total_fine': total_fine,
+                        'articles': json.dumps(violation_articles),
+                        'breakdown': json.dumps(fine_breakdown),
+                        'violation_id': violation_id
+                    })
+                    
+                    updated_count += 1
+                    results.append(f"✓ Παράβαση #{violation_id}: {total_fine}€ για {vehicle_type}")
+                
+            except Exception as e:
+                results.append(f"⚠️  Σφάλμα στην ενημέρωση παράβασης #{violation_id}: {e}")
+                continue
+        
+        # Commit όλων των αλλαγών
+        try:
+            db.session.commit()
+            results.append(f"\n✅ Ενημερώθηκαν επιτυχώς {updated_count} παραβάσεις")
+        except Exception as e:
+            db.session.rollback()
+            results.append(f"\n❌ Σφάλμα κατά την αποθήκευση: {e}")
+            return render_template_string("""
+                <h1>❌ Migration Απέτυχε</h1>
+                <pre>{{ results|join('\n') }}</pre>
+                <a href="{{ url_for('admin_dashboard') }}">Επιστροφή στο Admin</a>
+            """, results=results)
+
+        # Βήμα 3: Επαλήθευση
+        results.append("\n🔍 Επαλήθευση migration...")
+        
+        try:
+            # Στατιστικά
+            total_violations = db.session.execute(db.text("SELECT COUNT(*) FROM violation")).scalar()
+            violations_with_fines = db.session.execute(db.text(
+                "SELECT COUNT(*) FROM violation WHERE total_fine_amount > 0"
+            )).scalar()
+            
+            results.append(f"📊 Στατιστικά:")
+            results.append(f"   - Συνολικές παραβάσεις: {total_violations}")
+            results.append(f"   - Παραβάσεις με ποσά: {violations_with_fines}")
+            
+            if total_violations > 0:
+                percentage = (violations_with_fines/total_violations)*100
+                results.append(f"   - Ποσοστό ολοκλήρωσης: {percentage:.1f}%")
+            
+            results.append("\n🎉 Migration ολοκληρώθηκε επιτυχώς!")
+            results.append("Τώρα όλες οι παραβάσεις περιλαμβάνουν άρθρα και ποσά προστίμων.")
+            
+        except Exception as e:
+            results.append(f"❌ Σφάλμα στην επαλήθευση: {e}")
+        
+        return render_template_string("""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Migration Αποτελέσματα</title>
+                <meta charset="utf-8">
+                <style>
+                    body { font-family: monospace; margin: 20px; background: #f5f5f5; }
+                    .container { background: white; padding: 20px; border-radius: 8px; }
+                    pre { background: #f8f8f8; padding: 15px; border-radius: 4px; overflow-x: auto; }
+                    .success { color: #28a745; }
+                    .warning { color: #ffc107; }
+                    .error { color: #dc3545; }
+                    .button { 
+                        display: inline-block; 
+                        padding: 10px 20px; 
+                        margin: 20px 5px 0 0;
+                        background: #007bff; 
+                        color: white; 
+                        text-decoration: none; 
+                        border-radius: 4px; 
+                    }
+                    .button:hover { background: #0056b3; }
+                    .delete-btn { background: #dc3545; }
+                    .delete-btn:hover { background: #c82333; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🚀 Migration Αποτελέσματα</h1>
+                    <pre>{{ results|join('\n') }}</pre>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 4px;">
+                        <strong>⚠️ ΣΗΜΑΝΤΙΚΟ:</strong> Αυτό το route είναι προσωρινό και πρέπει να <strong>διαγραφεί</strong> 
+                        μετά την επιτυχή εκτέλεση του migration!
+                    </div>
+                    
+                    <a href="{{ url_for('admin_dashboard') }}" class="button">✓ Επιστροφή στο Admin</a>
+                    <a href="{{ url_for('view_violations') }}" class="button">📋 Δες Παραβάσεις</a>
+                </div>
+            </body>
+            </html>
+        """, results=results)
+        
+    except Exception as e:
+        error_msg = f"💥 Κρίσιμο σφάλμα migration: {str(e)}"
+        return render_template_string("""
+            <h1>❌ Migration Απέτυχε</h1>
+            <pre>{{ error_msg }}</pre>
+            <a href="{{ url_for('admin_dashboard') }}">Επιστροφή στο Admin</a>
+        """, error_msg=error_msg)
 
 # ======================== API ROUTES ========================
 
