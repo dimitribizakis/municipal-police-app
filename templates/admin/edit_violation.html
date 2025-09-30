@@ -225,37 +225,54 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="driver_last_name" class="form-label">
-                                <i class="fas fa-user me-1"></i>Επώνυμο *
-                            </label>
-                            <input type="text" class="form-control" id="driver_last_name" name="driver_last_name" 
-                                   value="{{ violation.driver_last_name }}" required>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="driver_present" name="driver_present" 
+                                       onchange="toggleDriverDetailsAdmin()" 
+                                       {% if violation.driver_last_name %}checked{% endif %}>
+                                <label class="form-check-label" for="driver_present">
+                                    <i class="fas fa-user-check me-1"></i>
+                                    Ο οδηγός/παραβάτης είναι παρών
+                                </label>
+                            </div>
+                            <small class="text-muted">Επιλέξτε μόνο αν ο οδηγός βρίσκεται επιτόπου</small>
                         </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="driver_first_name" class="form-label">
-                                <i class="fas fa-user me-1"></i>Όνομα *
-                            </label>
-                            <input type="text" class="form-control" id="driver_first_name" name="driver_first_name" 
-                                   value="{{ violation.driver_first_name }}" required>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="driver_father_name" class="form-label">
-                                <i class="fas fa-user me-1"></i>Όνομα Πατρός *
-                            </label>
-                            <input type="text" class="form-control" id="driver_father_name" name="driver_father_name" 
-                                   value="{{ violation.driver_father_name }}" required>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="driver_afm" class="form-label">
-                                <i class="fas fa-hashtag me-1"></i>ΑΦΜ *
-                            </label>
-                            <input type="text" class="form-control" id="driver_afm" name="driver_afm" 
-                                   value="{{ violation.driver_afm }}" maxlength="9" required>
+                    </div>
+                    
+                    <div id="driver-details-admin" {% if not violation.driver_last_name %}style="display: none;"{% endif %}>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_last_name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Επώνυμο *
+                                </label>
+                                <input type="text" class="form-control" id="driver_last_name" name="driver_last_name" 
+                                       value="{{ violation.driver_last_name or '' }}">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_first_name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Όνομα *
+                                </label>
+                                <input type="text" class="form-control" id="driver_first_name" name="driver_first_name" 
+                                       value="{{ violation.driver_first_name or '' }}">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_father_name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Όνομα Πατρός *
+                                </label>
+                                <input type="text" class="form-control" id="driver_father_name" name="driver_father_name" 
+                                       value="{{ violation.driver_father_name or '' }}">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_afm" class="form-label">
+                                    <i class="fas fa-hashtag me-1"></i>ΑΦΜ *
+                                </label>
+                                <input type="text" class="form-control" id="driver_afm" name="driver_afm" 
+                                       value="{{ violation.driver_afm or '' }}" maxlength="9">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -317,6 +334,28 @@
 
 {% block extra_js %}
 <script>
+// Toggle driver details visibility in admin
+function toggleDriverDetailsAdmin() {
+    const checkbox = document.getElementById('driver_present');
+    const driverDetails = document.getElementById('driver-details-admin');
+    const driverInputs = driverDetails.querySelectorAll('input[type="text"]');
+    
+    if (checkbox.checked) {
+        driverDetails.style.display = 'block';
+        // Make driver fields required when visible
+        driverInputs.forEach(input => {
+            input.required = true;
+        });
+    } else {
+        driverDetails.style.display = 'none';
+        // Clear and make driver fields optional when hidden
+        driverInputs.forEach(input => {
+            input.required = false;
+            input.value = '';
+        });
+    }
+}
+
 function editColor() {
     const select = document.getElementById('vehicle_color');
     const newColor = prompt('Εισάγετε νέο χρώμα οχήματος:');
@@ -344,8 +383,13 @@ function editType() {
 }
 
 // AFM validation
-document.getElementById('driver_afm').addEventListener('input', function() {
-    this.value = this.value.replace(/\D/g, '');
+document.addEventListener('DOMContentLoaded', function() {
+    const afmInput = document.getElementById('driver_afm');
+    if (afmInput) {
+        afmInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+        });
+    }
 });
 
 // Confirm before leaving with unsaved changes
