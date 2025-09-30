@@ -22,7 +22,7 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
-                <a href="{{ url_for('violations') }}" class="btn btn-outline-primary me-2">
+                <a href="{{ url_for('view_violations') }}" class="btn btn-outline-primary me-2">
                     <i class="fas fa-arrow-left me-1"></i>Επιστροφή στη Λίστα
                 </a>
                 <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-2">
@@ -91,18 +91,28 @@
                 <div class="mb-3">
                     <strong>Παραβάσεις:</strong>
                     <div class="mt-2">
+                        {% set total_amount = 0 %}
                         {% for violation_code in selected_violations %}
                             {% for v in violations_list %}
-                                {% if v.code == violation_code %}
+                                {% if v.id|string == violation_code %}
                                 <div class="alert alert-warning">
-                                    <strong>{{ v.code }}</strong> - {{ v.description }}
+                                    <strong>{{ v.description }}</strong>
+                                    {% if v.paragraph %}
+                                    <br><small class="text-primary">{{ v.paragraph }}</small>
+                                    {% endif %}
                                     {% if v.fine_cars %}
                                     <br><small class="text-muted">Πρόστιμο: {{ v.fine_cars }}€</small>
+                                    {% set total_amount = total_amount + v.fine_cars|int %}
                                     {% endif %}
                                 </div>
                                 {% endif %}
                             {% endfor %}
                         {% endfor %}
+                        {% if total_amount > 0 %}
+                        <div class="alert alert-info">
+                            <strong><i class="fas fa-calculator me-2"></i>Συνολικό Ποσό Παραβάσεων: {{ total_amount }}€</strong>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
