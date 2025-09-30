@@ -95,16 +95,14 @@
                             <label for="start_date" class="form-label">
                                 <i class="fas fa-calendar-plus me-1"></i>Από Ημερομηνία *
                             </label>
-                            <input type="date" class="form-control" id="start_date" name="start_date" 
-                                   value="{{ (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d') }}" required>
+                            <input type="date" class="form-control" id="start_date" name="start_date" required>
                         </div>
                         
                         <div class="col-md-6 mb-3">
                             <label for="end_date" class="form-label">
                                 <i class="fas fa-calendar-minus me-1"></i>Έως Ημερομηνία *
                             </label>
-                            <input type="date" class="form-control" id="end_date" name="end_date" 
-                                   value="{{ datetime.now().strftime('%Y-%m-%d') }}" required>
+                            <input type="date" class="form-control" id="end_date" name="end_date" required>
                         </div>
                     </div>
 
@@ -236,9 +234,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadOfficers() {
-    // This would typically be an AJAX call
     fetch('/api/officers')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(officers => {
             const select = document.getElementById('officer_id');
             select.innerHTML = '<option value="all">Όλοι οι Αστυνομικοί</option>';
@@ -252,6 +254,11 @@ function loadOfficers() {
         })
         .catch(error => {
             console.error('Error loading officers:', error);
+            // Keep default option if loading fails
+            const select = document.getElementById('officer_id');
+            if (select.children.length === 0) {
+                select.innerHTML = '<option value="all">Όλοι οι Αστυνομικοί</option>';
+            }
         });
 }
 
@@ -280,9 +287,17 @@ function setupDateInputs() {
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
     
+    // Set default dates
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    
+    startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
+    endDateInput.value = today.toISOString().split('T')[0];
+    
     // End date cannot be in the future
-    const today = new Date().toISOString().split('T')[0];
-    endDateInput.max = today;
+    const todayStr = today.toISOString().split('T')[0];
+    endDateInput.max = todayStr;
     
     // Start date cannot be after end date
     endDateInput.addEventListener('change', function() {
