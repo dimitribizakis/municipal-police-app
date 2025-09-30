@@ -239,47 +239,28 @@
                         <!-- Hidden input for camera photo data -->
                         <input type="hidden" id="photo_data" name="photo_data">
                     </div>
-
-                    <!-- Στοιχεία Οδηγού -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <h5 class="text-primary border-bottom pb-2">
-                                <i class="fas fa-user me-2"></i>Στοιχεία Οδηγού/Παραβάτη
-                            </h5>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="driver_last_name" class="form-label">
-                                <i class="fas fa-user me-1"></i>Επώνυμο *
-                            </label>
-                            <input type="text" class="form-control" id="driver_last_name" name="driver_last_name" 
-                                   placeholder="Επώνυμο οδηγού" required>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="driver_first_name" class="form-label">
-                                <i class="fas fa-user me-1"></i>Όνομα *
-                            </label>
-                            <input type="text" class="form-control" id="driver_first_name" name="driver_first_name" 
-                                   placeholder="Όνομα οδηγού" required>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="driver_father_name" class="form-label">
-                                <i class="fas fa-user me-1"></i>Όνομα Πατρός *
-                            </label>
-                            <input type="text" class="form-control" id="driver_father_name" name="driver_father_name" 
-                                   placeholder="Όνομα πατρός" required>
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="driver_afm" class="form-label">
-                                <i class="fas fa-hashtag me-1"></i>ΑΦΜ *
-                            </label>
-                            <input type="text" class="form-control" id="driver_afm" name="driver_afm" 
-                                   placeholder="Αριθμός Φορολογικού Μητρώου" maxlength="9" required>
-                        </div>
-                    </div>
+    function toggleDriverDetails() {
+    const checkbox = document.getElementById('driver_present');
+    const driverDetails = document.getElementById('driver-details');
+    const driverInputs = driverDetails.querySelectorAll('input[type="text"]');
+    
+    if (checkbox.checked) {
+        driverDetails.style.display = 'block';
+        // Make driver fields required when visible
+        driverInputs.forEach(input => {
+            input.required = true;
+        });
+    } else {
+        driverDetails.style.display = 'none';
+        // Clear and make driver fields optional when hidden
+        driverInputs.forEach(input => {
+            input.required = false;
+            input.value = '';
+        });
+        // Clear signature too
+        clearSignature();
+    }
+}
 
                     <!-- Υπογραφή -->
                     <div class="row mb-4">
