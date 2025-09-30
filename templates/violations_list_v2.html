@@ -62,6 +62,7 @@
                                 <th>Όχημα</th>
                                 <th>Τοποθεσία</th>
                                 <th>Παραβάσεις</th>
+                                <th>Πρόστιμο</th>
                                 <th>Μέτρα</th>
                                 <th>Κατάσταση</th>
                                 <th>Ενέργειες</th>
@@ -97,6 +98,13 @@
                                             <span class="badge bg-secondary">+{{ selected_violations|length - 2 }}</span>
                                         {% endif %}
                                     </small>
+                                </td>
+                                <td>
+                                    {% if violation.total_fine_amount %}
+                                        <span class="badge bg-success">{{ violation.total_fine_amount }}€</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <small>
