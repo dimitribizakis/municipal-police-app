@@ -1,82 +1,147 @@
 [
   {
-    "code": "Ρ-39",
-    "description": "Ρ-39 ΑΠΑΓΟΡΕΥΣΗ ΣΤΑΘΜΕΥΣΗΣ",
-    "paragraph": "§ 3",
-    "plate_removal": "*",
-    "license_removal": "10 ΗΜ.",
-    "category": "Ε1-Β",
-    "fine_cars": 30,
-    "fine_motorcycles": 30
-  },
-  {
     "code": "Ρ-40",
-    "description": "Ρ-40 ΑΠΑΓΟΡΕΥΣΗ ΣΤΑΣΗΣ & ΣΤΑΘΜΕΥΣΗΣ",
-    "paragraph": "§ 3",
-    "plate_removal": "*",
-    "license_removal": "10 ΗΜ.",
-    "category": "Ε1-Β",
-    "fine_cars": 30,
-    "fine_motorcycles": 30
+    "description": "Στάθμευση σε θέση που απαγορεύεται",
+    "fine": 80
   },
   {
     "code": "Ρ-41",
-    "description": "Ρ-41 ΑΠΑΓΟΡΕΥΣΗ ΣΤΑΘΜΕΥΣΗΣ ΤΟΥΣ ΠΕΡΙΤΤΟΥΣ ΜΗΝΕΣ",
-    "paragraph": "§ 3",
-    "plate_removal": "*",
-    "license_removal": "10 ΗΜ.",
-    "category": "Ε1-Β",
-    "fine_cars": 30,
-    "fine_motorcycles": 30
+    "description": "Στάθμευση σε πεζοδρόμιο",
+    "fine": 80
   },
   {
     "code": "Ρ-42",
-    "description": "Ρ-42 ΑΠΑΓΟΡΕΥΣΗ ΣΤΑΘΜΕΥΣΗΣ ΤΟΥΣ ΑΡΤΙΟΥΣ ΜΗΝΕΣ",
-    "paragraph": "§ 3",
-    "plate_removal": "*",
-    "license_removal": "10 ΗΜ.",
-    "category": "Ε1-Β",
-    "fine_cars": 30,
-    "fine_motorcycles": 30
+    "description": "Στάθμευση σε διάβαση πεζών",
+    "fine": 200
   },
   {
-    "code": "Ρ-69",
-    "description": "Ρ-69 ΧΩΡΟΣ ΕΛΕΓΧΟΜΕΝΗΣ ΣΤΑΘΜΕΥΣΗΣ",
-    "paragraph": "§ 3",
-    "plate_removal": "",
-    "license_removal": "",
-    "category": "Ε1-A",
-    "fine_cars": 30,
-    "fine_motorcycles": 30
+    "code": "Ρ-43",
+    "description": "Στάθμευση σε θέση ΑΜΕΑ",
+    "fine": 150
   },
   {
-    "code": "Ρ-70",
-    "description": "Ρ-70 ΧΩΡΟΣ ΟΡΙΣΜΕΝΗΣ ΚΑΤΗΓΟΡΙΑΣ ΟΧΗΜΑΤΩΝ",
-    "paragraph": "§ 3",
-    "plate_removal": "*",
-    "license_removal": "10 ΗΜ.",
-    "category": "Ε1-Β",
-    "fine_cars": 30,
-    "fine_motorcycles": 30
+    "code": "Ρ-44",
+    "description": "Στάθμευση σε στάση λεωφορείου",
+    "fine": 80
   },
   {
-    "code": "Ρ-71",
-    "description": "Ρ-71 ΕΙΔΙΚΟΣ ΧΩΡΟΣ ΑΤΟΜΩΝ ΜΕΙΩΜΕΝΗΣ ΚΙΝΗΤΙΚΟΤΗΤΑΣ",
-    "paragraph": "§ 3",
-    "plate_removal": "*",
-    "license_removal": "60 ΗΜ.",
-    "category": "Ε2-Β Σ",
-    "fine_cars": 150,
-    "fine_motorcycles": 150
+    "code": "Ρ-45",
+    "description": "Στάθμευση χωρίς εισιτήριο σε ελεγχόμενη ζώνη",
+    "fine": 40
   },
   {
-    "code": "Ρ-72",
-    "description": "Ρ-72 ΣΥΓΚΕΚΡΙΜΕΝΟ ΟΧΗΜΑ (ΜΕ ΑΡ. ΚΥΚΛ.) \nΑΤΟΜΟΥ ΜΕΙΩΜΕΝΗΣ ΚΙΝΗΤΙΚΟΤΗΤΑΣ",
-    "paragraph": "§ 3",
-    "plate_removal": "*",
-    "license_removal": "60 ΗΜ.",
-    "category": "Ε2-Β Σ",
-    "fine_cars": 150,
-    "fine_motorcycles": 150
+    "code": "Ρ-46",
+    "description": "Στάθμευση σε ράμπα ΑμεΑ",
+    "fine": 200
+  },
+  {
+    "code": "Ρ-47",
+    "description": "Στάθμευση εμπόδιση κυκλοφορίας",
+    "fine": 80
+  },
+  {
+    "code": "Ρ-48",
+    "description": "Διπλή στάθμευση",
+    "fine": 80
+  },
+  {
+    "code": "Ρ-49",
+    "description": "Στάθμευση σε απαγορευτική πινακίδα",
+    "fine": 80
+  },
+  {
+    "code": "Ρ-50",
+    "description": "Στάθμευση σε χώρο φόρτωσης-εκφόρτωσης",
+    "fine": 80
+  },
+  {
+    "code": "Ρ-51",
+    "description": "Στάθμευση σε πράσινη ζώνη",
+    "fine": 120
+  },
+  {
+    "code": "Κ-12",
+    "description": "Υπερβολική ταχύτητα εντός πόλης",
+    "fine": 100
+  },
+  {
+    "code": "Κ-15",
+    "description": "Παραβίαση απαγορευτικής πινακίδας",
+    "fine": 200
+  },
+  {
+    "code": "Κ-18",
+    "description": "Οδήγηση χωρίς ζώνη ασφαλείας",
+    "fine": 350
+  },
+  {
+    "code": "Κ-19",
+    "description": "Χρήση κινητού τηλεφώνου κατά την οδήγηση",
+    "fine": 100
+  },
+  {
+    "code": "Κ-20",
+    "description": "Παράβαση σηματοδότη",
+    "fine": 700
+  },
+  {
+    "code": "Κ-21",
+    "description": "Οδήγηση χωρίς κράνος (μοτοσικλέτα)",
+    "fine": 350
+  },
+  {
+    "code": "Κ-22",
+    "description": "Επικίνδυνη προσπέραση",
+    "fine": 700
+  },
+  {
+    "code": "Κ-23",
+    "description": "Οδήγηση σε αντίθετη κατεύθυνση",
+    "fine": 700
+  },
+  {
+    "code": "Κ-24",
+    "description": "Μη χρήση φώτων",
+    "fine": 80
+  },
+  {
+    "code": "Κ-25",
+    "description": "Οδήγηση χωρίς άδεια οδήγησης",
+    "fine": 800
+  },
+  {
+    "code": "Κ-26",
+    "description": "Οδήγηση χωρίς ΚΟΚ",
+    "fine": 500
+  },
+  {
+    "code": "Κ-27",
+    "description": "Οδήγηση χωρίς ασφάλεια",
+    "fine": 250
+  },
+  {
+    "code": "Κ-28",
+    "description": "Αλκοόλ κατά την οδήγηση (0.5-0.8‰)",
+    "fine": 200
+  },
+  {
+    "code": "Κ-29",
+    "description": "Αλκοόλ κατά την οδήγηση (>0.8‰)",
+    "fine": 1200
+  },
+  {
+    "code": "Λ-10",
+    "description": "Θόρυβος από όχημα",
+    "fine": 60
+  },
+  {
+    "code": "Λ-11",
+    "description": "Ρύπανση περιβάλλοντος από όχημα",
+    "fine": 100
+  },
+  {
+    "code": "Λ-12",
+    "description": "Απόρριψη αντικειμένων από όχημα",
+    "fine": 150
   }
 ]
