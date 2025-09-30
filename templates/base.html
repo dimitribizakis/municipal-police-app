@@ -83,23 +83,11 @@
             gap: 15px;
         }
         
-        .police-logo {
-            height: 60px;
-            width: auto;
-            border-radius: 8px;
-            background-color: rgba(255, 255, 255, 0.1);
-            padding: 5px;
-        }
-        
         .header-title {
             flex-grow: 1;
         }
         
         @media (max-width: 576px) {
-            .police-logo {
-                height: 45px;
-            }
-            
             .header h1 {
                 font-size: 1.5rem;
             }
@@ -154,7 +142,6 @@
             <div class="row align-items-center">
                 <div class="col-lg-8 col-md-7">
                     <div class="logo-container">
-                        <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Λογότυπο Δημοτικής Αστυνομίας" class="police-logo">
                         <div class="header-title">
                             <h1><i class="fas fa-shield-alt me-2"></i>Δημοτική Αστυνομία</h1>
                             <p class="mb-0">Σύστημα Καταχώρησης Παραβάσεων Οχημάτων</p>
