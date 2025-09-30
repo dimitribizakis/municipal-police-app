@@ -265,10 +265,14 @@ def index():
     vehicle_colors = DynamicField.query.filter_by(field_type='vehicle_color', is_active=True).all()
     vehicle_types = DynamicField.query.filter_by(field_type='vehicle_type', is_active=True).all()
     
+    # Φόρτωση current user για το template
+    current_user = get_current_user()
+    
     return render_template('index.html', 
                          violations=violations_list,
                          vehicle_colors=vehicle_colors,
                          vehicle_types=vehicle_types,
+                         current_user=current_user,
                          datetime=datetime)
 
 @app.route('/submit', methods=['POST'])
