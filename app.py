@@ -857,6 +857,134 @@ def ensure_database_initialized():
         except Exception as e:
             print(f"Database initialization failed: {e}")
 
+# ======================== MIGRATION ROUTE ========================
+@app.route('/admin/migrate-fines', methods=['GET'])
+@admin_required
+def migrate_fines():
+    """
+    Προσωρινή route για εκτέλεση migration του fine system
+    Θα πρέπει να αφαιρεθεί μετά την επιτυχή εκτέλεση
+    """
+    results = {
+        'success': False,
+        'messages': [],
+        'statistics': {}
+    }
+    
+    try:
+        results['messages'].append("🚀 Έναρξη Migration: Προσθήκη πεδίων προστίμων παραβάσεων")
+        
+        # Βήμα 1: Προσθήκη νέων στηλών
+        results['messages'].append("Προσθήκη νέων στηλών στη βάση δεδομένων...")
+        
+        try:
+            # Για SQLite (development) - χρήση ALTER TABLE
+            if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN violation_articles TEXT"))
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN total_fine_amount NUMERIC(8,2)"))
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN fine_breakdown TEXT"))
+                results['messages'].append("✓ Στήλες προστέθηκαν επιτυχώς (SQLite)")
+            else:
+                # Για PostgreSQL (production)
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN IF NOT EXISTS violation_articles TEXT"))
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN IF NOT EXISTS total_fine_amount NUMERIC(8,2)"))
+                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN IF NOT EXISTS fine_breakdown TEXT"))
+                results['messages'].append("✓ Στήλες προστέθηκαν επιτυχώς (PostgreSQL)")
+                
+            db.session.commit()
+            
+        except Exception as e:
+            results['messages'].append(f"⚠️  Πιθανώς οι στήλες υπάρχουν ήδη ή υπήρξε σφάλμα: {e}")
+            # Συνεχίζουμε γιατί μπορεί οι στήλες να υπάρχουν ήδη
+            db.session.rollback()
+
+        # Βήμα 2: Ενημέρωση υπαρχουσών παραβάσεων
+        results['messages'].append("Ενημέρωση υπαρχουσών παραβάσεων...")
+        
+        # Φόρτωση δεδομένων παραβάσεων
+        violations_data = load_violations()
+        results['messages'].append(f"Φορτώθηκαν {len(violations_data)} παραβάσεις από violations.json")
+        
+        # Λήψη όλων των παραβάσεων που δεν έχουν ποσό
+        violations = Violation.query.filter(
+            (Violation.total_fine_amount == None) | 
+            (Violation.total_fine_amount == 0)
+        ).all()
+        
+        results['messages'].append(f"Βρέθηκαν {len(violations)} παραβάσεις για ενημέρωση")
+        
+        updated_count = 0
+        for violation in violations:
+            try:
+                # Υπολογισμός προστίμου
+                total_fine = violation.calculate_total_fine(violations_data, violation.vehicle_type)
+                
+                if total_fine > 0:
+                    updated_count += 1
+                    results['messages'].append(f"Ενημερώθηκε παράβαση #{violation.id}: {total_fine}€ για {violation.vehicle_type}")
+                
+            except Exception as e:
+                results['messages'].append(f"⚠️  Σφάλμα στην ενημέρωση παράβασης #{violation.id}: {e}")
+                continue
+        
+        # Bulk commit για καλύτερη απόδοση
+        try:
+            db.session.commit()
+            results['messages'].append(f"✓ Ενημερώθηκαν επιτυχώς {updated_count} παραβάσεις")
+        except Exception as e:
+            db.session.rollback()
+            results['messages'].append(f"❌ Σφάλμα κατά την αποθήκευση: {e}")
+            return render_template('admin/migration_result.html', results=results)
+
+        # Βήμα 3: Επαλήθευση
+        results['messages'].append("Επαλήθευση migration...")
+        
+        try:
+            sample_violation = Violation.query.first()
+            if sample_violation:
+                # Προσπάθεια πρόσβασης στα νέα πεδία
+                _ = sample_violation.total_fine_amount
+                _ = sample_violation.violation_articles
+                _ = sample_violation.fine_breakdown
+                results['messages'].append("✓ Νέα πεδία προσβάσιμα")
+            else:
+                results['messages'].append("ℹ️  Δεν υπάρχουν παραβάσεις στη βάση για δοκιμή")
+            
+            # Στατιστικά
+            total_violations = Violation.query.count()
+            violations_with_fines = Violation.query.filter(Violation.total_fine_amount > 0).count()
+            
+            results['statistics'] = {
+                'total_violations': total_violations,
+                'violations_with_fines': violations_with_fines,
+                'updated_violations': updated_count
+            }
+            
+            results['messages'].append(f"📊 Στατιστικά:")
+            results['messages'].append(f"   - Συνολικές παραβάσεις: {total_violations}")
+            results['messages'].append(f"   - Παραβάσεις με ποσά: {violations_with_fines}")
+            results['messages'].append(f"   - Ενημερώθηκαν: {updated_count}")
+            
+            if total_violations > 0:
+                percentage = (violations_with_fines/total_violations)*100
+                results['messages'].append(f"   - Ποσοστό ολοκλήρωσης: {percentage:.1f}%")
+                results['statistics']['completion_percentage'] = round(percentage, 1)
+            else:
+                results['messages'].append("   - Ποσοστό ολοκλήρωσης: Δεν εφαρμόζεται (κενή βάση)")
+                results['statistics']['completion_percentage'] = 0
+            
+            results['success'] = True
+            results['messages'].append("✓ Migration ολοκληρώθηκε επιτυχώς!")
+            results['messages'].append("🎉 Τώρα όλες οι παραβάσεις περιλαμβάνουν άρθρα και ποσά προστίμων.")
+            
+        except Exception as e:
+            results['messages'].append(f"❌ Σφάλμα στην επαλήθευση: {e}")
+            
+    except Exception as e:
+        results['messages'].append(f"❌ Γενικό σφάλμα migration: {e}")
+        
+    return render_template('admin/migration_result.html', results=results)
+
 if __name__ == '__main__':
     # Development mode
     with app.app_context():
