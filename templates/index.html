@@ -58,7 +58,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('submit_violation') }}" onsubmit="return handleFormSubmission()">
+                <form method="POST" action="{{ url_for('submit_violation') }}" onsubmit="return validateForm()">
                     
                     <!-- Στοιχεία Οχήματος -->
                     <div class="row mb-4">
@@ -381,7 +381,8 @@
 {% block extra_js %}
 <script>
     // Signature Pad Variables
-    let canvas, ctx, isDrawing = false, lastX = 0, lastY = 0;
+    let canvas, ctx, isDrawing = false;
+    let signatureExists = false;
 
     // Toggle driver details visibility
     function toggleDriverDetails() {
@@ -410,130 +411,129 @@
     // Initialize Signature Pad
     function initSignaturePad() {
         canvas = document.getElementById('signature-canvas');
-        if (!canvas) return;
+        if (!canvas) {
+            console.log('Canvas element not found');
+            return;
+        }
         
         ctx = canvas.getContext('2d');
         
-        // Set canvas size to match CSS dimensions
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width * 2; // High DPI
-        canvas.height = rect.height * 2;
-        ctx.scale(2, 2);
+        // Set proper canvas dimensions
+        const container = canvas.parentElement;
+        const containerWidth = container.offsetWidth - 40; // Account for padding
+        
+        canvas.width = containerWidth;
+        canvas.height = 200;
+        canvas.style.width = containerWidth + 'px';
+        canvas.style.height = '200px';
         
         // Set drawing style
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.strokeStyle = '#000';
+        ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        console.log('Signature pad initialized successfully');
 
         // Mouse events
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mouseout', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
 
         // Touch events for mobile
-        canvas.addEventListener('touchstart', handleTouch);
-        canvas.addEventListener('touchmove', handleTouch);
-        canvas.addEventListener('touchend', stopDrawing);
-
-        // Prevent scrolling when drawing on mobile
         canvas.addEventListener('touchstart', function(e) {
             e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            startDrawing({offsetX: x, offsetY: y});
         });
+        
         canvas.addEventListener('touchmove', function(e) {
             e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            draw({offsetX: x, offsetY: y});
         });
-    }
-
-    // Get mouse/touch coordinates
-    function getEventPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        let clientX, clientY;
         
-        if (e.touches && e.touches[0]) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-        
-        return {
-            x: (clientX - rect.left) * (canvas.width / rect.width) / 2,
-            y: (clientY - rect.top) * (canvas.height / rect.height) / 2
-        };
+        canvas.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            stopDrawing();
+        });
     }
 
     // Start drawing
     function startDrawing(e) {
         isDrawing = true;
-        const pos = getEventPos(e);
-        lastX = pos.x;
-        lastY = pos.y;
+        ctx.beginPath();
+        ctx.moveTo(e.offsetX, e.offsetY);
+        console.log('Started drawing at:', e.offsetX, e.offsetY);
     }
 
     // Draw line
     function draw(e) {
         if (!isDrawing) return;
         
-        const pos = getEventPos(e);
-        
-        ctx.beginPath();
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(pos.x, pos.y);
+        ctx.lineTo(e.offsetX, e.offsetY);
         ctx.stroke();
+        signatureExists = true;
         
-        lastX = pos.x;
-        lastY = pos.y;
+        // Auto-save signature data
+        saveSignature();
     }
 
     // Stop drawing
     function stopDrawing() {
         if (isDrawing) {
             isDrawing = false;
-            saveSignature();
+            ctx.beginPath(); // Reset path
+            console.log('Stopped drawing');
         }
-    }
-
-    // Handle touch events
-    function handleTouch(e) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
-                                         e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
-            clientX: touch.clientX,
-            clientY: touch.clientY
-        });
-        canvas.dispatchEvent(mouseEvent);
     }
 
     // Clear signature
     function clearSignature() {
         if (canvas && ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000000'; // Reset to black
+            signatureExists = false;
             document.getElementById('signature_data').value = '';
+            console.log('Signature cleared');
         }
     }
 
     // Save signature as base64
     function saveSignature() {
-        if (canvas) {
+        if (canvas && signatureExists) {
             const signatureData = canvas.toDataURL('image/png');
             document.getElementById('signature_data').value = signatureData;
+            console.log('Signature saved');
         }
     }
 
     // Check if signature is empty
     function isSignatureEmpty() {
-        if (!canvas) return true;
-        
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        return !imageData.data.some(channel => channel !== 0);
+        return !signatureExists || !document.getElementById('signature_data').value;
     }
 
     // Form submission validation
     function validateForm() {
+        // Check if violations are selected
+        const violationCheckboxes = document.querySelectorAll('input[name="violations"]:checked');
+        if (violationCheckboxes.length === 0) {
+            alert('Παρακαλώ επιλέξτε τουλάχιστον μία παράβαση.');
+            return false;
+        }
+
         const checkbox = document.getElementById('driver_present');
         if (checkbox && checkbox.checked) {
             // If driver is present, check if signature exists
@@ -545,10 +545,120 @@
         return true;
     }
 
+    // Dynamic field handling for custom colors and types
+    function handleCustomFields() {
+        // Custom vehicle color
+        const colorSelect = document.getElementById('vehicle_color');
+        const customColorDiv = document.getElementById('custom_color_div');
+        
+        if (colorSelect && customColorDiv) {
+            colorSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customColorDiv.style.display = 'block';
+                    document.getElementById('custom_vehicle_color').required = true;
+                } else {
+                    customColorDiv.style.display = 'none';
+                    document.getElementById('custom_vehicle_color').required = false;
+                }
+            });
+        }
+
+        // Custom vehicle type
+        const typeSelect = document.getElementById('vehicle_type');
+        const customTypeDiv = document.getElementById('custom_type_div');
+        
+        if (typeSelect && customTypeDiv) {
+            typeSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customTypeDiv.style.display = 'block';
+                    document.getElementById('custom_vehicle_type').required = true;
+                } else {
+                    customTypeDiv.style.display = 'none';
+                    document.getElementById('custom_vehicle_type').required = false;
+                }
+            });
+        }
+    }
+
+    // Camera functionality (existing camera code remains the same)
+    let stream = null;
+    
+    async function startCamera() {
+        try {
+            const video = document.getElementById('camera-preview');
+            const startBtn = document.getElementById('start-camera-btn');
+            const captureBtn = document.getElementById('capture-btn');
+            const stopBtn = document.getElementById('stop-camera-btn');
+            
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' }
+            });
+            
+            video.srcObject = stream;
+            video.style.display = 'block';
+            
+            startBtn.style.display = 'none';
+            captureBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'inline-block';
+            
+            document.getElementById('photo-status').innerHTML = 
+                '<div class="alert alert-info"><i class="fas fa-camera me-1"></i>Κάμερα ενεργή</div>';
+                
+        } catch (err) {
+            document.getElementById('photo-status').innerHTML = 
+                '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-1"></i>Σφάλμα κάμερας: ' + err.message + '</div>';
+        }
+    }
+    
+    function capturePhoto() {
+        const video = document.getElementById('camera-preview');
+        const canvas = document.getElementById('photo-canvas');
+        const preview = document.getElementById('photo-preview');
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        
+        const photoData = canvas.toDataURL('image/jpeg', 0.8);
+        document.getElementById('photo_data').value = photoData;
+        
+        preview.src = photoData;
+        preview.style.display = 'block';
+        
+        document.getElementById('photo-status').innerHTML = 
+            '<div class="alert alert-success"><i class="fas fa-check me-1"></i>Φωτογραφία αποθηκεύτηκε</div>';
+            
+        stopCamera();
+    }
+    
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        
+        const video = document.getElementById('camera-preview');
+        const startBtn = document.getElementById('start-camera-btn');
+        const captureBtn = document.getElementById('capture-btn');
+        const stopBtn = document.getElementById('stop-camera-btn');
+        
+        video.style.display = 'none';
+        startBtn.style.display = 'inline-block';
+        captureBtn.style.display = 'none';
+        stopBtn.style.display = 'none';
+    }
+
     // Set current date and time as default
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing...');
+        
         // Initialize signature pad
         initSignaturePad();
+        
+        // Initialize custom fields
+        handleCustomFields();
         
         const now = new Date();
         
@@ -579,15 +689,24 @@
             });
         }
 
-        // Add form validation
-        const form = document.querySelector('form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                if (!validateForm()) {
-                    e.preventDefault();
+        // Handle file upload preview
+        const fileInput = document.getElementById('photo_file');
+        if (fileInput) {
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.getElementById('photo-preview');
+                        preview.src = e.target.result;
+                        preview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
                 }
             });
         }
+
+        console.log('Initialization complete');
     });
 </script>
 {% endblock %}
