@@ -172,16 +172,29 @@
                             <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
                                 {% for violation in violations %}
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="violations" 
-                                           value="{{ violation.code }}" id="violation_{{ loop.index }}">
+                                    <input class="form-check-input violation-checkbox" type="checkbox" name="violations" 
+                                           value="{{ violation.id }}" id="violation_{{ loop.index }}"
+                                           data-fine="{{ violation.fine_cars }}">
                                     <label class="form-check-label" for="violation_{{ loop.index }}">
-                                        <strong>{{ violation.code }}</strong> - {{ violation.description }}
-                                        <span class="text-muted">({{ violation.fine }}€)</span>
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>{{ violation.description }}</strong>
+                                                {% if violation.paragraph %}
+                                                <small class="text-primary d-block">{{ violation.paragraph }}</small>
+                                                {% endif %}
+                                            </div>
+                                            <span class="badge bg-danger ms-2">{{ violation.fine_cars }}€</span>
+                                        </div>
                                     </label>
                                 </div>
                                 {% endfor %}
                             </div>
-                            <small class="text-muted">Επιλέξτε μία ή περισσότερες παραβάσεις</small>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small class="text-muted">Επιλέξτε μία ή περισσότερες παραβάσεις</small>
+                                <div class="total-amount">
+                                    <strong>Σύνολο: <span id="totalAmount">0</span>€</strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -426,6 +439,26 @@
     // Signature Pad Variables
     let canvas, ctx, isDrawing = false;
     let signatureExists = false;
+
+    // Calculate total amount of selected violations
+    function updateTotalAmount() {
+        const checkedBoxes = document.querySelectorAll('.violation-checkbox:checked');
+        let total = 0;
+        checkedBoxes.forEach(checkbox => {
+            const fine = parseInt(checkbox.getAttribute('data-fine')) || 0;
+            total += fine;
+        });
+        document.getElementById('totalAmount').textContent = total;
+    }
+
+    // Add event listeners to all violation checkboxes
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('.violation-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateTotalAmount);
+        });
+        updateTotalAmount(); // Initial calculation
+    });
 
     // Toggle driver details visibility
     function toggleDriverDetails() {
