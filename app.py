@@ -119,11 +119,6 @@ class Violation(db.Model):
     street_number = db.Column(db.String(10), nullable=False)
     selected_violations = db.Column(db.Text, nullable=False)  # JSON string
     
-    # Νέα πεδία για άρθρα και ποσά παραβάσεων
-    violation_articles = db.Column(db.Text, nullable=True)  # JSON string με άρθρα
-    total_fine_amount = db.Column(db.Numeric(8,2), nullable=True)  # Συνολικό ποσό προστίμου
-    fine_breakdown = db.Column(db.Text, nullable=True)  # JSON με αναλυτικά πρόστιμα
-    
     # Επιτόπια Μέτρα
     plates_removed = db.Column(db.Boolean, default=False)
     license_removed = db.Column(db.Boolean, default=False)
@@ -150,62 +145,6 @@ class Violation(db.Model):
             return json.loads(self.selected_violations)
         except:
             return []
-    
-    def get_violation_articles_list(self):
-        """Επιστρέφει τα άρθρα των παραβάσεων ως λίστα"""
-        try:
-            return json.loads(self.violation_articles) if self.violation_articles else []
-        except:
-            return []
-    
-    def get_fine_breakdown_dict(self):
-        """Επιστρέφει το αναλυτικό πρόστιμο ως dictionary"""
-        try:
-            return json.loads(self.fine_breakdown) if self.fine_breakdown else {}
-        except:
-            return {}
-    
-    def calculate_total_fine(self, violations_data, vehicle_type):
-        """Υπολογίζει το συνολικό πρόστιμο βάσει των επιλεγμένων παραβάσεων και τύπου οχήματος"""
-        total = 0
-        fine_details = []
-        articles = []
-        
-        selected_violations = self.get_selected_violations_list()
-        
-        # Δημιουργία mapping από violations.json
-        violation_map = {str(v['id']): v for v in violations_data}
-        
-        for violation_id in selected_violations:
-            if str(violation_id) in violation_map:
-                violation_info = violation_map[str(violation_id)]
-                
-                # Προσθήκη άρθρου αν υπάρχει
-                if violation_info.get('article') and violation_info['article'] not in articles:
-                    articles.append(violation_info['article'])
-                
-                # Επιλογή σωστού προστίμου βάσει τύπου οχήματος
-                if vehicle_type.upper() in ['ΜΟΤΟΣΙΚΛΈΤΑ', 'ΜΟΤΟΣΙΚΛΕΤΑ', 'ΜΟΤΟΠΟΔΉΛΑΤΟ', 'ΜΟΤΟΠΟΔΗΛΑΤΟ', 'ΜΟΤΟ']:
-                    fine_amount = float(violation_info.get('fine_motorcycles', 0))
-                else:
-                    fine_amount = float(violation_info.get('fine_cars', 0))
-                
-                total += fine_amount
-                
-                fine_details.append({
-                    'id': violation_id,
-                    'description': violation_info.get('description', ''),
-                    'paragraph': violation_info.get('paragraph', ''),
-                    'article': violation_info.get('article', ''),
-                    'amount': fine_amount
-                })
-        
-        # Ενημέρωση των πεδίων
-        self.total_fine_amount = total
-        self.violation_articles = json.dumps(articles, ensure_ascii=False)
-        self.fine_breakdown = json.dumps(fine_details, ensure_ascii=False)
-        
-        return total
 
 # ======================== AUTHENTICATION DECORATORS ========================
 
@@ -486,10 +425,7 @@ def submit_violation():
             officer_id=session['user_id']
         )
         
-        # Φόρτωση δεδομένων παραβάσεων και υπολογισμός προστίμου
-        violations_data = load_violations()
-        violation.calculate_total_fine(violations_data, vehicle_type)
-        
+        # Προσθήκη στη βάση δεδομένων
         db.session.add(violation)
         db.session.commit()
         
@@ -549,23 +485,45 @@ def view_violation(violation_id):
 @admin_required
 def admin_dashboard():
     """Admin Dashboard"""
-    # Στατιστικά
-    total_users = User.query.filter_by(is_active=True).count()
-    total_violations = Violation.query.count()
-    today_violations = Violation.query.filter(
-        Violation.violation_date == datetime.now().date()
-    ).count()
-    
-    # Πρόσφατες παραβάσεις
-    recent_violations = Violation.query.order_by(
-        Violation.created_at.desc()
-    ).limit(10).all()
-    
-    return render_template('admin/dashboard.html',
-                         total_users=total_users,
-                         total_violations=total_violations,
-                         today_violations=today_violations,
-                         recent_violations=recent_violations)
+    try:
+        # Παίρνουμε τον τρέχοντα χρήστη
+        current_user = User.query.get(session['user_id'])
+        
+        # Στατιστικά με try-except για ασφάλεια
+        try:
+            total_users = User.query.filter_by(is_active=True).count()
+        except Exception:
+            total_users = 0
+            
+        try:
+            total_violations = Violation.query.count()
+        except Exception:
+            total_violations = 0
+            
+        try:
+            today_violations = Violation.query.filter(
+                Violation.violation_date == datetime.now().date()
+            ).count()
+        except Exception:
+            today_violations = 0
+        
+        # Πρόσφατες παραβάσεις
+        try:
+            recent_violations = Violation.query.order_by(
+                Violation.created_at.desc()
+            ).limit(10).all()
+        except Exception:
+            recent_violations = []
+        
+        return render_template('admin/dashboard.html',
+                             current_user=current_user,
+                             total_users=total_users,
+                             total_violations=total_violations,
+                             today_violations=today_violations,
+                             recent_violations=recent_violations)
+    except Exception as e:
+        flash(f'Σφάλμα φόρτωσης dashboard: {str(e)}', 'error')
+        return redirect(url_for('index'))
 
 @app.route('/admin/users')
 @admin_required
@@ -682,10 +640,8 @@ def admin_edit_violation(violation_id):
             
             violation.updated_at = datetime.utcnow()
             
-            # Επανυπολογισμός προστίμου με βάση τις νέες παραβάσεις και τον τύπο οχήματος
-            violations_data = load_violations()
-            violation.calculate_total_fine(violations_data, violation.vehicle_type)
             
+            # Αποθήκευση αλλαγών
             db.session.commit()
             flash('Η παράβαση ενημερώθηκε επιτυχώς!', 'success')
             return redirect(url_for('admin_violations'))
@@ -856,134 +812,6 @@ def ensure_database_initialized():
             _db_initialized = True
         except Exception as e:
             print(f"Database initialization failed: {e}")
-
-# ======================== MIGRATION ROUTE ========================
-@app.route('/admin/migrate-fines', methods=['GET'])
-@admin_required
-def migrate_fines():
-    """
-    Προσωρινή route για εκτέλεση migration του fine system
-    Θα πρέπει να αφαιρεθεί μετά την επιτυχή εκτέλεση
-    """
-    results = {
-        'success': False,
-        'messages': [],
-        'statistics': {}
-    }
-    
-    try:
-        results['messages'].append("🚀 Έναρξη Migration: Προσθήκη πεδίων προστίμων παραβάσεων")
-        
-        # Βήμα 1: Προσθήκη νέων στηλών
-        results['messages'].append("Προσθήκη νέων στηλών στη βάση δεδομένων...")
-        
-        try:
-            # Για SQLite (development) - χρήση ALTER TABLE
-            if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
-                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN violation_articles TEXT"))
-                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN total_fine_amount NUMERIC(8,2)"))
-                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN fine_breakdown TEXT"))
-                results['messages'].append("✓ Στήλες προστέθηκαν επιτυχώς (SQLite)")
-            else:
-                # Για PostgreSQL (production)
-                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN IF NOT EXISTS violation_articles TEXT"))
-                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN IF NOT EXISTS total_fine_amount NUMERIC(8,2)"))
-                db.session.execute(db.text("ALTER TABLE violation ADD COLUMN IF NOT EXISTS fine_breakdown TEXT"))
-                results['messages'].append("✓ Στήλες προστέθηκαν επιτυχώς (PostgreSQL)")
-                
-            db.session.commit()
-            
-        except Exception as e:
-            results['messages'].append(f"⚠️  Πιθανώς οι στήλες υπάρχουν ήδη ή υπήρξε σφάλμα: {e}")
-            # Συνεχίζουμε γιατί μπορεί οι στήλες να υπάρχουν ήδη
-            db.session.rollback()
-
-        # Βήμα 2: Ενημέρωση υπαρχουσών παραβάσεων
-        results['messages'].append("Ενημέρωση υπαρχουσών παραβάσεων...")
-        
-        # Φόρτωση δεδομένων παραβάσεων
-        violations_data = load_violations()
-        results['messages'].append(f"Φορτώθηκαν {len(violations_data)} παραβάσεις από violations.json")
-        
-        # Λήψη όλων των παραβάσεων που δεν έχουν ποσό
-        violations = Violation.query.filter(
-            (Violation.total_fine_amount == None) | 
-            (Violation.total_fine_amount == 0)
-        ).all()
-        
-        results['messages'].append(f"Βρέθηκαν {len(violations)} παραβάσεις για ενημέρωση")
-        
-        updated_count = 0
-        for violation in violations:
-            try:
-                # Υπολογισμός προστίμου
-                total_fine = violation.calculate_total_fine(violations_data, violation.vehicle_type)
-                
-                if total_fine > 0:
-                    updated_count += 1
-                    results['messages'].append(f"Ενημερώθηκε παράβαση #{violation.id}: {total_fine}€ για {violation.vehicle_type}")
-                
-            except Exception as e:
-                results['messages'].append(f"⚠️  Σφάλμα στην ενημέρωση παράβασης #{violation.id}: {e}")
-                continue
-        
-        # Bulk commit για καλύτερη απόδοση
-        try:
-            db.session.commit()
-            results['messages'].append(f"✓ Ενημερώθηκαν επιτυχώς {updated_count} παραβάσεις")
-        except Exception as e:
-            db.session.rollback()
-            results['messages'].append(f"❌ Σφάλμα κατά την αποθήκευση: {e}")
-            return render_template('admin/migration_result.html', results=results)
-
-        # Βήμα 3: Επαλήθευση
-        results['messages'].append("Επαλήθευση migration...")
-        
-        try:
-            sample_violation = Violation.query.first()
-            if sample_violation:
-                # Προσπάθεια πρόσβασης στα νέα πεδία
-                _ = sample_violation.total_fine_amount
-                _ = sample_violation.violation_articles
-                _ = sample_violation.fine_breakdown
-                results['messages'].append("✓ Νέα πεδία προσβάσιμα")
-            else:
-                results['messages'].append("ℹ️  Δεν υπάρχουν παραβάσεις στη βάση για δοκιμή")
-            
-            # Στατιστικά
-            total_violations = Violation.query.count()
-            violations_with_fines = Violation.query.filter(Violation.total_fine_amount > 0).count()
-            
-            results['statistics'] = {
-                'total_violations': total_violations,
-                'violations_with_fines': violations_with_fines,
-                'updated_violations': updated_count
-            }
-            
-            results['messages'].append(f"📊 Στατιστικά:")
-            results['messages'].append(f"   - Συνολικές παραβάσεις: {total_violations}")
-            results['messages'].append(f"   - Παραβάσεις με ποσά: {violations_with_fines}")
-            results['messages'].append(f"   - Ενημερώθηκαν: {updated_count}")
-            
-            if total_violations > 0:
-                percentage = (violations_with_fines/total_violations)*100
-                results['messages'].append(f"   - Ποσοστό ολοκλήρωσης: {percentage:.1f}%")
-                results['statistics']['completion_percentage'] = round(percentage, 1)
-            else:
-                results['messages'].append("   - Ποσοστό ολοκλήρωσης: Δεν εφαρμόζεται (κενή βάση)")
-                results['statistics']['completion_percentage'] = 0
-            
-            results['success'] = True
-            results['messages'].append("✓ Migration ολοκληρώθηκε επιτυχώς!")
-            results['messages'].append("🎉 Τώρα όλες οι παραβάσεις περιλαμβάνουν άρθρα και ποσά προστίμων.")
-            
-        except Exception as e:
-            results['messages'].append(f"❌ Σφάλμα στην επαλήθευση: {e}")
-            
-    except Exception as e:
-        results['messages'].append(f"❌ Γενικό σφάλμα migration: {e}")
-        
-    return render_template('admin/migration_result.html', results=results)
 
 if __name__ == '__main__':
     # Development mode
