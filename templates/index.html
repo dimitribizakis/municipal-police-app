@@ -2,6 +2,42 @@
 
 {% block title %}Καταχώρηση Παράβασης - Δημοτική Αστυνομία{% endblock %}
 
+{% block extra_css %}
+<style>
+.signature-pad {
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+.signature-pad:hover {
+    border-color: #007bff;
+}
+
+#signature-canvas {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: crosshair;
+    display: block;
+    margin: 0 auto;
+    background: white;
+    touch-action: none; /* Prevent scrolling on touch devices */
+}
+
+#signature-canvas:hover {
+    border-color: #007bff;
+}
+
+.signature-instructions {
+    color: #6c757d;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-12">
@@ -308,7 +344,11 @@
                             <div class="col-12">
                                 <div class="signature-pad p-3 mb-3">
                                     <canvas id="signature-canvas" width="600" height="200" 
-                                            style="border: 1px solid #ddd; width: 100%; height: 200px;"></canvas>
+                                            style="width: 100%; height: 200px;"></canvas>
+                                    <div class="signature-instructions">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Σύρετε το ποντίκι ή το δάχτυλό σας για να υπογράψετε
+                                    </div>
                                 </div>
                                 
                                 <button type="button" class="btn btn-outline-secondary" onclick="clearSignature()">
@@ -340,6 +380,9 @@
 
 {% block extra_js %}
 <script>
+    // Signature Pad Variables
+    let canvas, ctx, isDrawing = false, lastX = 0, lastY = 0;
+
     // Toggle driver details visibility
     function toggleDriverDetails() {
         const checkbox = document.getElementById('driver_present');
@@ -364,8 +407,149 @@
         }
     }
 
+    // Initialize Signature Pad
+    function initSignaturePad() {
+        canvas = document.getElementById('signature-canvas');
+        if (!canvas) return;
+        
+        ctx = canvas.getContext('2d');
+        
+        // Set canvas size to match CSS dimensions
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * 2; // High DPI
+        canvas.height = rect.height * 2;
+        ctx.scale(2, 2);
+        
+        // Set drawing style
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+
+        // Mouse events
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', handleTouch);
+        canvas.addEventListener('touchmove', handleTouch);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        // Prevent scrolling when drawing on mobile
+        canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+        });
+        canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        });
+    }
+
+    // Get mouse/touch coordinates
+    function getEventPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
+        
+        if (e.touches && e.touches[0]) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        return {
+            x: (clientX - rect.left) * (canvas.width / rect.width) / 2,
+            y: (clientY - rect.top) * (canvas.height / rect.height) / 2
+        };
+    }
+
+    // Start drawing
+    function startDrawing(e) {
+        isDrawing = true;
+        const pos = getEventPos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+    }
+
+    // Draw line
+    function draw(e) {
+        if (!isDrawing) return;
+        
+        const pos = getEventPos(e);
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        
+        lastX = pos.x;
+        lastY = pos.y;
+    }
+
+    // Stop drawing
+    function stopDrawing() {
+        if (isDrawing) {
+            isDrawing = false;
+            saveSignature();
+        }
+    }
+
+    // Handle touch events
+    function handleTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                         e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+        canvas.dispatchEvent(mouseEvent);
+    }
+
+    // Clear signature
+    function clearSignature() {
+        if (canvas && ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('signature_data').value = '';
+        }
+    }
+
+    // Save signature as base64
+    function saveSignature() {
+        if (canvas) {
+            const signatureData = canvas.toDataURL('image/png');
+            document.getElementById('signature_data').value = signatureData;
+        }
+    }
+
+    // Check if signature is empty
+    function isSignatureEmpty() {
+        if (!canvas) return true;
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        return !imageData.data.some(channel => channel !== 0);
+    }
+
+    // Form submission validation
+    function validateForm() {
+        const checkbox = document.getElementById('driver_present');
+        if (checkbox && checkbox.checked) {
+            // If driver is present, check if signature exists
+            if (isSignatureEmpty()) {
+                alert('Παρακαλώ προσθέστε την υπογραφή του οδηγού/παραβάτη.');
+                return false;
+            }
+        }
+        return true;
+    }
+
     // Set current date and time as default
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize signature pad
+        initSignaturePad();
+        
         const now = new Date();
         
         // Set current date
@@ -391,6 +575,16 @@
                 // Limit to 9 characters
                 if (this.value.length > 9) {
                     this.value = this.value.slice(0, 9);
+                }
+            });
+        }
+
+        // Add form validation
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                if (!validateForm()) {
+                    e.preventDefault();
                 }
             });
         }
