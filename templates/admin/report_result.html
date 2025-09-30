@@ -73,19 +73,27 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-3 text-center">
+                        <div class="col-md-2 text-center">
                             <h3 class="text-primary">{{ total_violations }}</h3>
                             <p class="mb-0">Συνολικές Παραβάσεις</p>
                         </div>
-                        <div class="col-md-3 text-center">
-                            <h3 class="text-success">{{ violations|selectattr('plates_removed')|list|length }}</h3>
+                        <div class="col-md-2 text-center">
+                            <h3 class="text-success">{{ total_fine_amount }}€</h3>
+                            <p class="mb-0">Συνολικά Πρόστιμα</p>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <h3 class="text-warning">{{ violations|selectattr('plates_removed')|list|length }}</h3>
                             <p class="mb-0">Αφαιρέσεις Πινακίδων</p>
                         </div>
-                        <div class="col-md-3 text-center">
-                            <h3 class="text-warning">{{ violations|selectattr('license_removed')|list|length }}</h3>
+                        <div class="col-md-2 text-center">
+                            <h3 class="text-danger">{{ violations|selectattr('license_removed')|list|length }}</h3>
                             <p class="mb-0">Αφαιρέσεις Αδειών</p>
                         </div>
-                        <div class="col-md-3 text-center">
+                        <div class="col-md-2 text-center">
+                            <h3 class="text-secondary">{{ violations|selectattr('registration_removed')|list|length }}</h3>
+                            <p class="mb-0">Αφαιρέσεις Κυκλοφορίας</p>
+                        </div>
+                        <div class="col-md-2 text-center">
                             <h3 class="text-info">{{ violations|selectattr('photo_filename')|list|length }}</h3>
                             <p class="mb-0">Με Φωτογραφίες</p>
                         </div>
@@ -162,6 +170,7 @@
                                     <th>Αστυνομικός</th>
                                     {% endif %}
                                     <th>Παραβάσεις</th>
+                                    <th>Πρόστιμο</th>
                                     <th>Μέτρα</th>
                                 </tr>
                             </thead>
@@ -196,6 +205,13 @@
                                                 <span class="badge bg-secondary">+{{ selected_violations|length - 2 }}</span>
                                             {% endif %}
                                         </small>
+                                    </td>
+                                    <td>
+                                        {% if violation.total_fine_amount %}
+                                            <span class="badge bg-success">{{ violation.total_fine_amount }}€</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <small>
