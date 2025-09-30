@@ -126,11 +126,11 @@ class Violation(db.Model):
     # Φωτογραφία
     photo_filename = db.Column(db.String(255), nullable=True)
     
-    # Στοιχεία Οδηγού
-    driver_last_name = db.Column(db.String(50), nullable=False)
-    driver_first_name = db.Column(db.String(50), nullable=False)
-    driver_father_name = db.Column(db.String(50), nullable=False)
-    driver_afm = db.Column(db.String(20), nullable=False)
+    # Στοιχεία Οδηγού (optional - μόνο αν είναι παρών)
+    driver_last_name = db.Column(db.String(50), nullable=True)
+    driver_first_name = db.Column(db.String(50), nullable=True)
+    driver_father_name = db.Column(db.String(50), nullable=True)
+    driver_afm = db.Column(db.String(20), nullable=True)
     driver_signature = db.Column(db.Text, nullable=True)  # Base64 encoded signature
     
     # Μεταδεδομένα
@@ -375,12 +375,26 @@ def submit_violation():
             if photo_file:
                 photo_filename = save_uploaded_file(photo_file)
         
-        # Στοιχεία οδηγού
-        driver_last_name = request.form.get('driver_last_name')
-        driver_first_name = request.form.get('driver_first_name')
-        driver_father_name = request.form.get('driver_father_name')
-        driver_afm = request.form.get('driver_afm')
-        driver_signature = request.form.get('signature_data')
+        # Στοιχεία οδηγού (μόνο αν είναι παρών)
+        driver_present = 'driver_present' in request.form
+        
+        if driver_present:
+            driver_last_name = request.form.get('driver_last_name')
+            driver_first_name = request.form.get('driver_first_name')
+            driver_father_name = request.form.get('driver_father_name')
+            driver_afm = request.form.get('driver_afm')
+            driver_signature = request.form.get('signature_data')
+            
+            # Validation μόνο αν είναι παρών ο οδηγός
+            if not all([driver_last_name, driver_first_name, driver_father_name, driver_afm]):
+                flash('Παρακαλώ συμπληρώστε όλα τα στοιχεία του οδηγού.', 'error')
+                return redirect(url_for('index'))
+        else:
+            driver_last_name = None
+            driver_first_name = None
+            driver_father_name = None
+            driver_afm = None
+            driver_signature = None
         
         # Δημιουργία νέας παράβασης
         violation = Violation(
@@ -581,10 +595,19 @@ def admin_edit_violation(violation_id):
             violation.license_removed = 'license_removed' in request.form
             violation.registration_removed = 'registration_removed' in request.form
             
-            violation.driver_last_name = request.form.get('driver_last_name')
-            violation.driver_first_name = request.form.get('driver_first_name')
-            violation.driver_father_name = request.form.get('driver_father_name')
-            violation.driver_afm = request.form.get('driver_afm')
+            # Στοιχεία οδηγού (μόνο αν είναι παρών)
+            driver_present = 'driver_present' in request.form
+            
+            if driver_present:
+                violation.driver_last_name = request.form.get('driver_last_name')
+                violation.driver_first_name = request.form.get('driver_first_name')
+                violation.driver_father_name = request.form.get('driver_father_name')
+                violation.driver_afm = request.form.get('driver_afm')
+            else:
+                violation.driver_last_name = None
+                violation.driver_first_name = None
+                violation.driver_father_name = None
+                violation.driver_afm = None
             
             violation.updated_at = datetime.utcnow()
             
