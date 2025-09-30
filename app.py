@@ -3,6 +3,7 @@ import json
 import base64
 from datetime import datetime, timedelta
 from functools import wraps
+from decimal import Decimal
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
@@ -118,6 +119,11 @@ class Violation(db.Model):
     street_number = db.Column(db.String(10), nullable=False)
     selected_violations = db.Column(db.Text, nullable=False)  # JSON string
     
+    # Νέα πεδία για άρθρα και ποσά παραβάσεων
+    violation_articles = db.Column(db.Text, nullable=True)  # JSON string με άρθρα
+    total_fine_amount = db.Column(db.Numeric(8,2), nullable=True)  # Συνολικό ποσό προστίμου
+    fine_breakdown = db.Column(db.Text, nullable=True)  # JSON με αναλυτικά πρόστιμα
+    
     # Επιτόπια Μέτρα
     plates_removed = db.Column(db.Boolean, default=False)
     license_removed = db.Column(db.Boolean, default=False)
@@ -144,6 +150,62 @@ class Violation(db.Model):
             return json.loads(self.selected_violations)
         except:
             return []
+    
+    def get_violation_articles_list(self):
+        """Επιστρέφει τα άρθρα των παραβάσεων ως λίστα"""
+        try:
+            return json.loads(self.violation_articles) if self.violation_articles else []
+        except:
+            return []
+    
+    def get_fine_breakdown_dict(self):
+        """Επιστρέφει το αναλυτικό πρόστιμο ως dictionary"""
+        try:
+            return json.loads(self.fine_breakdown) if self.fine_breakdown else {}
+        except:
+            return {}
+    
+    def calculate_total_fine(self, violations_data, vehicle_type):
+        """Υπολογίζει το συνολικό πρόστιμο βάσει των επιλεγμένων παραβάσεων και τύπου οχήματος"""
+        total = 0
+        fine_details = []
+        articles = []
+        
+        selected_violations = self.get_selected_violations_list()
+        
+        # Δημιουργία mapping από violations.json
+        violation_map = {str(v['id']): v for v in violations_data}
+        
+        for violation_id in selected_violations:
+            if str(violation_id) in violation_map:
+                violation_info = violation_map[str(violation_id)]
+                
+                # Προσθήκη άρθρου αν υπάρχει
+                if violation_info.get('article') and violation_info['article'] not in articles:
+                    articles.append(violation_info['article'])
+                
+                # Επιλογή σωστού προστίμου βάσει τύπου οχήματος
+                if vehicle_type.upper() in ['ΜΟΤΟΣΙΚΛΈΤΑ', 'ΜΟΤΟΣΙΚΛΕΤΑ', 'ΜΟΤΟΠΟΔΉΛΑΤΟ', 'ΜΟΤΟΠΟΔΗΛΑΤΟ', 'ΜΟΤΟ']:
+                    fine_amount = float(violation_info.get('fine_motorcycles', 0))
+                else:
+                    fine_amount = float(violation_info.get('fine_cars', 0))
+                
+                total += fine_amount
+                
+                fine_details.append({
+                    'id': violation_id,
+                    'description': violation_info.get('description', ''),
+                    'paragraph': violation_info.get('paragraph', ''),
+                    'article': violation_info.get('article', ''),
+                    'amount': fine_amount
+                })
+        
+        # Ενημέρωση των πεδίων
+        self.total_fine_amount = total
+        self.violation_articles = json.dumps(articles, ensure_ascii=False)
+        self.fine_breakdown = json.dumps(fine_details, ensure_ascii=False)
+        
+        return total
 
 # ======================== AUTHENTICATION DECORATORS ========================
 
@@ -424,6 +486,10 @@ def submit_violation():
             officer_id=session['user_id']
         )
         
+        # Φόρτωση δεδομένων παραβάσεων και υπολογισμός προστίμου
+        violations_data = load_violations()
+        violation.calculate_total_fine(violations_data, vehicle_type)
+        
         db.session.add(violation)
         db.session.commit()
         
@@ -616,6 +682,10 @@ def admin_edit_violation(violation_id):
             
             violation.updated_at = datetime.utcnow()
             
+            # Επανυπολογισμός προστίμου με βάση τις νέες παραβάσεις και τον τύπο οχήματος
+            violations_data = load_violations()
+            violation.calculate_total_fine(violations_data, violation.vehicle_type)
+            
             db.session.commit()
             flash('Η παράβαση ενημερώθηκε επιτυχώς!', 'success')
             return redirect(url_for('admin_violations'))
@@ -658,13 +728,13 @@ def admin_generate_report():
             flash('Παρακαλώ επιλέξτε ημερομηνία λήξης', 'error')
             return redirect(url_for('admin_reports'))
             
-        start_date = datetime.strptime(start_date.strip(), '%Y-%m-%d').date()
-        end_date = datetime.strptime(end_date.strip(), '%Y-%m-%d').date()
+        start_date = datetime.strptime(start_date.strip(), '%Y-%m-%d')
+        end_date = datetime.strptime(end_date.strip(), '%Y-%m-%d')
         
         # Base query
         query = Violation.query.filter(
-            Violation.violation_date >= start_date,
-            Violation.violation_date <= end_date
+            Violation.violation_date >= start_date.date(),
+            Violation.violation_date <= end_date.date()
         )
         
         # Filter by officer if specified
@@ -672,6 +742,12 @@ def admin_generate_report():
             query = query.filter(Violation.officer_id == int(officer_id))
         
         violations = query.order_by(Violation.violation_date.desc()).all()
+        
+        # Υπολογισμός συνολικού ποσού προστίμων
+        total_fine_amount = sum(
+            violation.total_fine_amount for violation in violations 
+            if violation.total_fine_amount
+        )
         
         # Get all officers for the report
         officers = User.query.filter_by(role='officer', is_active=True).all()
@@ -682,7 +758,9 @@ def admin_generate_report():
             'end_date': end_date,
             'report_type': report_type,
             'total_violations': len(violations),
-            'officers': officers
+            'total_fine_amount': total_fine_amount,
+            'officers': officers,
+            'current_datetime': datetime.now()
         }
         
         if officer_id and officer_id != 'all':
