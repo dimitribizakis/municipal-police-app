@@ -1,0 +1,167 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Migration Αποτελέσματα{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-database"></i>
+                        Migration Αποτελέσματα - Προσθήκη Πεδίων Προστίμων
+                    </h4>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Επιστροφή
+                    </a>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Κατάσταση Migration -->
+                    <div class="alert {% if results.success %}alert-success{% else %}alert-danger{% endif %} mb-4">
+                        {% if results.success %}
+                            <i class="fas fa-check-circle"></i>
+                            <strong>Migration ολοκληρώθηκε επιτυχώς!</strong>
+                            <p class="mb-0 mt-2">Τώρα όλες οι παραβάσεις έχουν άρθρα και ποσά προστίμων.</p>
+                        {% else %}
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Migration απέτυχε!</strong>
+                            <p class="mb-0 mt-2">Παρακαλώ ελέγξτε τα μηνύματα παρακάτω.</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Στατιστικά -->
+                    {% if results.statistics %}
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card border-primary">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-primary">{{ results.statistics.total_violations }}</h5>
+                                    <p class="card-text">Συνολικές Παραβάσεις</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card border-success">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-success">{{ results.statistics.violations_with_fines }}</h5>
+                                    <p class="card-text">Με Πρόστιμα</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card border-info">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-info">{{ results.statistics.updated_violations }}</h5>
+                                    <p class="card-text">Ενημερώθηκαν</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card border-warning">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title text-warning">{{ results.statistics.completion_percentage }}%</h5>
+                                    <p class="card-text">Ολοκλήρωση</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Μηνύματα Migration -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list"></i>
+                                Λεπτομέρειες Migration
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="migration-log" style="max-height: 400px; overflow-y: auto;">
+                                {% for message in results.messages %}
+                                    <div class="log-entry mb-2 p-2 
+                                        {% if '✓' in message %}bg-light-success{% endif %}
+                                        {% if '❌' in message %}bg-light-danger{% endif %}
+                                        {% if '⚠️' in message %}bg-light-warning{% endif %}
+                                        {% if '📊' in message %}bg-light-info{% endif %}
+                                        {% if '🚀' in message or '🎉' in message %}bg-light-primary{% endif %}
+                                        border-left-4">
+                                        <code>{{ message }}</code>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Επόμενα Βήματα -->
+                    {% if results.success %}
+                    <div class="alert alert-info mt-4">
+                        <h5><i class="fas fa-info-circle"></i> Επόμενα Βήματα:</h5>
+                        <ol>
+                            <li>Δοκιμάστε τη λειτουργικότητα στις σελίδες παραβάσεων</li>
+                            <li>Ελέγξτε ότι τα πρόστιμα εμφανίζονται σωστά</li>
+                            <li>Δημιουργήστε μια νέα παράβαση για να επιβεβαιώσετε τη λειτουργία</li>
+                            <li><strong>Αφαιρέστε αυτή τη route (<code>/admin/migrate-fines</code>) από τον κώδικα για ασφάλεια</strong></li>
+                        </ol>
+                    </div>
+                    {% endif %}
+
+                    <!-- Κουμπιά Δράσης -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <a href="{{ url_for('admin_violations') }}" class="btn btn-primary btn-block">
+                                <i class="fas fa-eye"></i> Προβολή Παραβάσεων
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-block">
+                                <i class="fas fa-tachometer-alt"></i> Admin Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.border-left-4 {
+    border-left: 4px solid #dee2e6 !important;
+}
+
+.bg-light-success {
+    background-color: #d4edda !important;
+    border-left-color: #28a745 !important;
+}
+
+.bg-light-danger {
+    background-color: #f8d7da !important;
+    border-left-color: #dc3545 !important;
+}
+
+.bg-light-warning {
+    background-color: #fff3cd !important;
+    border-left-color: #ffc107 !important;
+}
+
+.bg-light-info {
+    background-color: #d1ecf1 !important;
+    border-left-color: #17a2b8 !important;
+}
+
+.bg-light-primary {
+    background-color: #cce7ff !important;
+    border-left-color: #007bff !important;
+}
+
+.log-entry code {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+}
+</style>
+{% endblock %}
