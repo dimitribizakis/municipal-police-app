@@ -128,6 +128,23 @@
     </div>
 </div>
 
+<!-- ΠΡΟΣΩΡΙΝΟ: Migration προστίμων -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-database me-2"></i>
+                <strong>Migration Προστίμων:</strong> 
+                Προσθήκη άρθρων και ποσών στις παραβάσεις
+                <small class="d-block text-muted">⚠️ Προσωρινό κουμπί - Διαγραφή μετά τη χρήση!</small>
+            </div>
+            <button onclick="confirmMigration()" class="btn btn-warning">
+                <i class="fas fa-cogs me-1"></i>Εκτέλεση Migration
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Recent Violations -->
 <div class="row">
     <div class="col-12">
@@ -192,4 +209,14 @@
         </div>
     </div>
 </div>
+
+<script>
+function confirmMigration() {
+    if (confirm('⚠️ ΠΡΟΣΟΧΗ!\n\nΑυτό θα κάνει αλλαγές στη βάση δεδομένων.\n\nΣίγουρα θέλετε να συνεχίσετε;')) {
+        if (confirm('🔄 Τελική επιβεβαίωση!\n\nΘα προστεθούν νέα πεδία στις παραβάσεις.\nΑυτή η ενέργεια δεν μπορεί να αναιρεθεί.\n\nΠροχωράμε;')) {
+            window.location.href = '{{ url_for("migrate_fines") }}';
+        }
+    }
+}
+</script>
 {% endblock %}
