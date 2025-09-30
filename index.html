@@ -1,295 +1,399 @@
-<!DOCTYPE html>
-<html lang="el">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Δημοτική Αστυνομία - Demo Εφαρμογής</title>
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .demo-container {
-            padding: 50px 0;
-        }
-        
-        .welcome-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .demo-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            margin-bottom: 30px;
-            overflow: hidden;
-        }
-        
-        .demo-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-        }
-        
-        .demo-card .card-header {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            padding: 20px;
-        }
-        
-        .demo-card .card-body {
-            padding: 25px;
-        }
-        
-        .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-            color: #667eea;
-        }
-        
-        .btn-demo {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-            padding: 12px 25px;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .btn-demo:hover {
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-        
-        .logo-showcase {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .logo-showcase img {
-            height: 120px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            background: white;
-            padding: 15px;
-        }
-        
-        .tech-stack {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 30px;
-        }
-        
-        .tech-badge {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            margin: 5px;
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="demo-container">
-        <div class="container">
-            <!-- Welcome Header -->
-            <div class="welcome-card p-5 text-center mb-5">
-                <div class="logo-showcase">
-                    <img src="static/logo.jpg" alt="Λογότυπο Δημοτικής Αστυνομίας">
+{% extends "base_v2.html" %}
+
+{% block title %}Καταχώρηση Παράβασης - Δημοτική Αστυνομία{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>Καταχώρηση Νέας Παράβασης
+                    </h4>
                 </div>
-                
-                <h1 class="display-4 text-primary mb-3">
-                    <i class="fas fa-shield-alt me-3"></i>
-                    Δημοτική Αστυνομία
-                </h1>
-                <h3 class="text-secondary mb-4">Σύστημα Καταχώρησης Παραβάσεων Οχημάτων</h3>
-                <p class="lead text-muted mb-4">
-                    Μια σύγχρονη web εφαρμογή που δημιουργήθηκε ειδικά για τη Δημοτική Αστυνομία 
-                    για την αποτελεσματική καταχώρηση και διαχείριση παραβάσεων οχημάτων.
-                </p>
-                
-                <div class="tech-stack">
-                    <h5 class="text-white mb-3"><i class="fas fa-code me-2"></i>Τεχνολογίες</h5>
-                    <span class="tech-badge">Flask</span>
-                    <span class="tech-badge">SQLite</span>
-                    <span class="tech-badge">Bootstrap 5</span>
-                    <span class="tech-badge">JavaScript</span>
-                    <span class="tech-badge">Python</span>
-                    <span class="tech-badge">Signature Pad</span>
+                <div class="d-flex align-items-center">
+                    <small class="text-muted me-3">
+                        <i class="fas fa-user me-1"></i>Συνδεδεμένος ως: {{ current_user.first_name }} {{ current_user.last_name }}
+                    </small>
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-sign-out-alt me-1"></i>Αποσύνδεση
+                    </a>
                 </div>
             </div>
-
-            <!-- Demo Pages -->
-            <div class="row">
-                <div class="col-lg-4 col-md-6">
-                    <div class="demo-card">
-                        <div class="card-header text-center">
-                            <i class="fas fa-plus-circle feature-icon"></i>
-                            <h4>Καταχώρηση Παράβασης</h4>
-                        </div>
-                        <div class="card-body text-center">
-                            <p class="text-muted mb-4">
-                                Πλήρης φόρμα καταχώρησης με όλα τα απαραίτητα στοιχεία, 
-                                επιλογή παραβάσεων από dropdown, και πλαίσιο υπογραφής.
-                            </p>
-                            
-                            <div class="mb-4">
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Στοιχεία οχήματος
-                                </small><br>
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Επιλογή παραβάσεων
-                                </small><br>
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Upload φωτογραφίας
-                                </small><br>
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Πλαίσιο υπογραφής
-                                </small>
-                            </div>
-                            
-                            <a href="demo.html" class="btn-demo">
-                                <i class="fas fa-eye me-2"></i>Προβολή Demo
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6">
-                    <div class="demo-card">
-                        <div class="card-header text-center">
-                            <i class="fas fa-list-ul feature-icon"></i>
-                            <h4>Λίστα Παραβάσεων</h4>
-                        </div>
-                        <div class="card-body text-center">
-                            <p class="text-muted mb-4">
-                                Πίνακας με όλες τις καταχωρημένες παραβάσεις, φίλτρα αναζήτησης, 
-                                και στατιστικά στοιχεία.
-                            </p>
-                            
-                            <div class="mb-4">
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Ταξινομημένη λίστα
-                                </small><br>
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Στατιστικά dashboard
-                                </small><br>
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Responsive design
-                                </small><br>
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Επίσημη εμφάνιση
-                                </small>
-                            </div>
-                            
-                            <a href="demo_list.html" class="btn-demo">
-                                <i class="fas fa-eye me-2"></i>Προβολή Demo
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6">
-                    <div class="demo-card">
-                        <div class="card-header text-center">
-                            <i class="fas fa-file-alt feature-icon"></i>
-                            <h4>Αναλυτική Προβολή</h4>
-                        </div>
-                        <div class="card-body text-center">
-                            <p class="text-muted mb-4">
-                                Λεπτομερής προβολή κάθε παράβασης με επίσημη εμφάνιση 
-                                κατάλληλη για εκτύπωση και αρχειοθέτηση.
-                            </p>
-                            
-                            <div class="mb-4">
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Επίσημο layout
-                                </small><br>
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Φωτογραφίες & υπογραφές
-                                </small><br>
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Print-friendly
-                                </small><br>
-                                <small class="text-success">
-                                    <i class="fas fa-check me-1"></i>Export λειτουργίες
-                                </small>
-                            </div>
-                            
-                            <a href="demo_detail.html" class="btn-demo">
-                                <i class="fas fa-eye me-2"></i>Προβολή Demo
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Features Overview -->
-            <div class="welcome-card p-5 mt-5">
-                <div class="row text-center">
-                    <div class="col-md-3 mb-4">
-                        <i class="fas fa-mobile-alt fa-3x text-primary mb-3"></i>
-                        <h5>Responsive Design</h5>
-                        <p class="text-muted">Λειτουργεί τέλεια σε desktop, tablet και smartphone</p>
-                    </div>
-                    <div class="col-md-3 mb-4">
-                        <i class="fas fa-database fa-3x text-success mb-3"></i>
-                        <h5>Βάση Δεδομένων</h5>
-                        <p class="text-muted">Ασφαλής αποθήκευση με SQLite/PostgreSQL</p>
-                    </div>
-                    <div class="col-md-3 mb-4">
-                        <i class="fas fa-signature fa-3x text-warning mb-3"></i>
-                        <h5>Ψηφιακές Υπογραφές</h5>
-                        <p class="text-muted">Συλλογή υπογραφών με signature pad</p>
-                    </div>
-                    <div class="col-md-3 mb-4">
-                        <i class="fas fa-shield-alt fa-3x text-info mb-3"></i>
-                        <h5>Ασφάλεια</h5>
-                        <p class="text-muted">Secure file uploads και input validation</p>
-                    </div>
-                </div>
-                
-                <hr class="my-4">
-                
-                <div class="text-center">
-                    <h4 class="text-primary mb-3">Έτοιμη για Παραγωγή</h4>
-                    <p class="text-muted mb-4">
-                        Η εφαρμογή είναι πλήρως λειτουργική και έτοιμη για εγκατάσταση σε production περιβάλλον.
-                        Περιλαμβάνει πλήρη backend, frontend, και όλες τις απαραίτητες λειτουργίες.
-                    </p>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('submit_violation') }}" onsubmit="return handleFormSubmission()">
                     
-                    <div class="btn-group" role="group">
-                        <a href="README.md" class="btn btn-outline-primary">
-                            <i class="fas fa-book me-2"></i>Οδηγίες Εγκατάστασης
-                        </a>
-                        <button class="btn btn-primary" onclick="window.print()">
-                            <i class="fas fa-download me-2"></i>Download Εφαρμογής
-                        </button>
+                    <!-- Στοιχεία Οχήματος -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-car me-2"></i>Στοιχεία Οχήματος
+                            </h5>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="license_plate" class="form-label">
+                                <i class="fas fa-tag me-1"></i>Αριθμός Κυκλοφορίας *
+                            </label>
+                            <input type="text" class="form-control" id="license_plate" name="license_plate" 
+                                   placeholder="π.χ. ABC-1234" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle_brand" class="form-label">
+                                <i class="fas fa-industry me-1"></i>Μάρκα Οχήματος *
+                            </label>
+                            <input type="text" class="form-control" id="vehicle_brand" name="vehicle_brand" 
+                                   placeholder="π.χ. Toyota, BMW" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle_color" class="form-label">
+                                <i class="fas fa-palette me-1"></i>Χρώμα Οχήματος *
+                            </label>
+                            <div class="dynamic-field-container">
+                                <select class="form-select" id="vehicle_color" name="vehicle_color" required>
+                                    <option value="">Επιλέξτε χρώμα...</option>
+                                    {% for color in vehicle_colors %}
+                                    <option value="{{ color.value }}">{{ color.value }}</option>
+                                    {% endfor %}
+                                    <option value="custom">+ Άλλο χρώμα...</option>
+                                </select>
+                                <div class="custom-input" id="custom_color_div">
+                                    <input type="text" class="form-control" id="custom_vehicle_color" 
+                                           name="custom_vehicle_color" placeholder="Εισάγετε νέο χρώμα">
+                                    <small class="text-muted">Το νέο χρώμα θα αποθηκευτεί για μελλοντική χρήση</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle_type" class="form-label">
+                                <i class="fas fa-car-side me-1"></i>Τύπος Οχήματος *
+                            </label>
+                            <div class="dynamic-field-container">
+                                <select class="form-select" id="vehicle_type" name="vehicle_type" required>
+                                    <option value="">Επιλέξτε τύπο...</option>
+                                    {% for type in vehicle_types %}
+                                    <option value="{{ type.value }}">{{ type.value }}</option>
+                                    {% endfor %}
+                                    <option value="custom">+ Άλλος τύπος...</option>
+                                </select>
+                                <div class="custom-input" id="custom_type_div">
+                                    <input type="text" class="form-control" id="custom_vehicle_type" 
+                                           name="custom_vehicle_type" placeholder="Εισάγετε νέο τύπο οχήματος">
+                                    <small class="text-muted">Ο νέος τύπος θα αποθηκευτεί για μελλοντική χρήση</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+
+                    <!-- Στοιχεία Παράβασης -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Στοιχεία Παράβασης
+                            </h5>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="violation_date" class="form-label">
+                                <i class="fas fa-calendar me-1"></i>Ημερομηνία Παράβασης *
+                            </label>
+                            <input type="date" class="form-control" id="violation_date" name="violation_date" 
+                                   value="{{ datetime.now().strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="violation_time" class="form-label">
+                                <i class="fas fa-clock me-1"></i>Ώρα Παράβασης *
+                            </label>
+                            <input type="time" class="form-control" id="violation_time" name="violation_time" 
+                                   value="{{ datetime.now().strftime('%H:%M') }}" required>
+                        </div>
+                        
+                        <div class="col-md-8 mb-3">
+                            <label for="street" class="form-label">
+                                <i class="fas fa-road me-1"></i>Οδός *
+                            </label>
+                            <input type="text" class="form-control" id="street" name="street" 
+                                   placeholder="π.χ. Λεωφόρος Κηφισίας" required>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="street_number" class="form-label">
+                                <i class="fas fa-hashtag me-1"></i>Αριθμός *
+                            </label>
+                            <input type="text" class="form-control" id="street_number" name="street_number" 
+                                   placeholder="π.χ. 145" required>
+                        </div>
+                        
+                        <div class="col-12 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-list me-1"></i>Παραβάσεις *
+                            </label>
+                            <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                                {% for violation in violations %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="violations" 
+                                           value="{{ violation.code }}" id="violation_{{ loop.index }}">
+                                    <label class="form-check-label" for="violation_{{ loop.index }}">
+                                        <strong>{{ violation.code }}</strong> - {{ violation.description }}
+                                        <span class="text-muted">({{ violation.fine }}€)</span>
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <small class="text-muted">Επιλέξτε μία ή περισσότερες παραβάσεις</small>
+                        </div>
+                    </div>
+
+                    <!-- Επιτόπια Μέτρα -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-hands me-2"></i>Επιτόπια Μέτρα
+                            </h5>
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="plates_removed" 
+                                               id="plates_removed">
+                                        <label class="form-check-label" for="plates_removed">
+                                            <i class="fas fa-square me-1"></i>Αφαίρεση Πινακίδων
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="license_removed" 
+                                               id="license_removed">
+                                        <label class="form-check-label" for="license_removed">
+                                            <i class="fas fa-id-card me-1"></i>Αφαίρεση Άδειας Οδήγησης
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="registration_removed" 
+                                               id="registration_removed">
+                                        <label class="form-check-label" for="registration_removed">
+                                            <i class="fas fa-file-alt me-1"></i>Αφαίρεση Άδειας Κυκλοφορίας
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Φωτογραφία Οχήματος -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-camera me-2"></i>Φωτογραφία Οχήματος
+                            </h5>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="camera-container">
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-success me-2" id="start-camera-btn" 
+                                            onclick="startCamera()">
+                                        <i class="fas fa-camera me-1"></i>Άνοιγμα Κάμερας
+                                    </button>
+                                    <button type="button" class="btn btn-primary me-2" id="capture-btn" 
+                                            onclick="capturePhoto()" style="display: none;">
+                                        <i class="fas fa-capture me-1"></i>Λήψη Φωτογραφίας
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="stop-camera-btn" 
+                                            onclick="stopCamera()" style="display: none;">
+                                        <i class="fas fa-stop me-1"></i>Τερματισμός
+                                    </button>
+                                </div>
+                                
+                                <video id="camera-preview" autoplay playsinline></video>
+                                <canvas id="photo-canvas"></canvas>
+                                
+                                <div id="photo-status" class="mt-2"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="photo_file" class="form-label">
+                                    <i class="fas fa-upload me-1"></i>Ή ανεβάστε αρχείο
+                                </label>
+                                <input type="file" class="form-control" id="photo_file" name="photo_file" 
+                                       accept="image/*">
+                                <small class="text-muted">Μέγιστο μέγεθος: 5MB</small>
+                            </div>
+                            
+                            <img id="photo-preview" class="photo-preview" style="display: none;" 
+                                 alt="Προεπισκόπηση φωτογραφίας">
+                        </div>
+                        
+                        <!-- Hidden input for camera photo data -->
+                        <input type="hidden" id="photo_data" name="photo_data">
+                    </div>
+
+                    <!-- Παρουσία Οδηγού -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-user me-2"></i>Στοιχεία Οδηγού/Παραβάτη
+                            </h5>
+                        </div>
+                        
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="driver_present" name="driver_present" 
+                                       onchange="toggleDriverDetails()">
+                                <label class="form-check-label" for="driver_present">
+                                    <i class="fas fa-user-check me-1"></i>
+                                    Ο οδηγός/παραβάτης είναι παρών
+                                </label>
+                            </div>
+                            <small class="text-muted">Επιλέξτε μόνο αν ο οδηγός βρίσκεται επιτόπου</small>
+                        </div>
+                    </div>
+
+                    <!-- Στοιχεία Οδηγού (εμφανίζονται μόνο όταν είναι παρών) -->
+                    <div id="driver-details" style="display: none;">
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_last_name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Επώνυμο *
+                                </label>
+                                <input type="text" class="form-control" id="driver_last_name" name="driver_last_name" 
+                                       placeholder="Επώνυμο οδηγού">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_first_name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Όνομα *
+                                </label>
+                                <input type="text" class="form-control" id="driver_first_name" name="driver_first_name" 
+                                       placeholder="Όνομα οδηγού">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_father_name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Όνομα Πατρός *
+                                </label>
+                                <input type="text" class="form-control" id="driver_father_name" name="driver_father_name" 
+                                       placeholder="Όνομα πατρός">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_afm" class="form-label">
+                                    <i class="fas fa-hashtag me-1"></i>ΑΦΜ *
+                                </label>
+                                <input type="text" class="form-control" id="driver_afm" name="driver_afm" 
+                                       placeholder="Αριθμός Φορολογικού Μητρώου" maxlength="9">
+                            </div>
+                        </div>
+
+                        <!-- Υπογραφή -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary border-bottom pb-2">
+                                    <i class="fas fa-signature me-2"></i>Υπογραφή Οδηγού/Παραβάτη
+                                </h5>
+                            </div>
+                            
+                            <div class="col-12">
+                                <div class="signature-pad p-3 mb-3">
+                                    <canvas id="signature-canvas" width="600" height="200" 
+                                            style="border: 1px solid #ddd; width: 100%; height: 200px;"></canvas>
+                                </div>
+                                
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearSignature()">
+                                    <i class="fas fa-eraser me-1"></i>Καθαρισμός Υπογραφής
+                                </button>
+                                
+                                <input type="hidden" id="signature_data" name="signature_data">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Κουμπιά -->
+                    <div class="row">
+                        <div class="col-12 text-center">
+                            <button type="submit" class="btn btn-primary btn-lg me-3">
+                                <i class="fas fa-save me-2"></i>Καταχώρηση Παράβασης
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary btn-lg" onclick="clearSignature()">
+                                <i class="fas fa-undo me-2"></i>Καθαρισμός Φόρμας
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% block extra_js %}
+<script>
+    // Toggle driver details visibility
+    function toggleDriverDetails() {
+        const checkbox = document.getElementById('driver_present');
+        const driverDetails = document.getElementById('driver-details');
+        const driverInputs = driverDetails.querySelectorAll('input[type="text"]');
+        
+        if (checkbox.checked) {
+            driverDetails.style.display = 'block';
+            // Make driver fields required when visible
+            driverInputs.forEach(input => {
+                input.required = true;
+            });
+        } else {
+            driverDetails.style.display = 'none';
+            // Clear and make driver fields optional when hidden
+            driverInputs.forEach(input => {
+                input.required = false;
+                input.value = '';
+            });
+            // Clear signature too
+            clearSignature();
+        }
+    }
+
+    // Set current date and time as default
+    document.addEventListener('DOMContentLoaded', function() {
+        const now = new Date();
+        
+        // Set current date
+        const dateInput = document.getElementById('violation_date');
+        if (dateInput && !dateInput.value) {
+            dateInput.value = now.toISOString().split('T')[0];
+        }
+        
+        // Set current time
+        const timeInput = document.getElementById('violation_time');
+        if (timeInput && !timeInput.value) {
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            timeInput.value = `${hours}:${minutes}`;
+        }
+        
+        // Format AFM input
+        const afmInput = document.getElementById('driver_afm');
+        if (afmInput) {
+            afmInput.addEventListener('input', function(e) {
+                // Remove non-numeric characters
+                this.value = this.value.replace(/\D/g, '');
+                // Limit to 9 characters
+                if (this.value.length > 9) {
+                    this.value = this.value.slice(0, 9);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
