@@ -74,18 +74,20 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <strong>Ημερομηνία:</strong> {{ violation.violation_time.strftime('%d/%m/%Y') }}
+                        <strong>Ημερομηνία:</strong> {{ violation.violation_date.strftime('%d/%m/%Y') }}
                     </div>
                     <div class="col-md-6 mb-3">
                         <strong>Ώρα:</strong> {{ violation.violation_time.strftime('%H:%M') }}
                     </div>
                     <div class="col-md-12 mb-3">
-                        <strong>Τοποθεσία:</strong> {{ violation.street_name }}
+                        <strong>Τοποθεσία:</strong> {{ violation.street }}
                         {% if violation.street_number %} {{ violation.street_number }}{% endif %}
                     </div>
+                    {% if current_user.role == 'admin' %}
                     <div class="col-md-12 mb-3">
-                        <strong>Δημοτικός Αστυνομικός:</strong> {{ violation.officer_name or 'Δεν καταχωρήθηκε' }}
+                        <strong>Δημοτικός Αστυνομικός:</strong> {{ violation.officer.first_name }} {{ violation.officer.last_name }}
                     </div>
+                    {% endif %}
                 </div>
                 
                 <div class="mb-3">
@@ -96,21 +98,27 @@
                             {% for v in violations_list %}
                                 {% if v.id|string == violation_code %}
                                 <div class="alert alert-warning">
-                                    <strong>{{ v.description }}</strong>
-                                    {% if v.paragraph %}
-                                    <br><small class="text-primary">{{ v.paragraph }}</small>
-                                    {% endif %}
-                                    {% if v.fine_cars %}
-                                    <br><small class="text-muted">Πρόστιμο: {{ v.fine_cars }}€</small>
-                                    {% set total_amount = total_amount + v.fine_cars|int %}
-                                    {% endif %}
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <strong>{{ v.description }}</strong>
+                                            {% if v.paragraph %}
+                                            <br><small class="text-primary">{{ v.paragraph }}</small>
+                                            {% endif %}
+                                        </div>
+                                        <span class="badge bg-danger">{{ v.fine_cars }}€</span>
+                                    </div>
                                 </div>
+                                {% set total_amount = total_amount + (v.fine_cars|int) %}
                                 {% endif %}
                             {% endfor %}
                         {% endfor %}
+                        
                         {% if total_amount > 0 %}
-                        <div class="alert alert-info">
-                            <strong><i class="fas fa-calculator me-2"></i>Συνολικό Ποσό Παραβάσεων: {{ total_amount }}€</strong>
+                        <div class="alert alert-info mt-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span><strong><i class="fas fa-calculator me-2"></i>Συνολικό Ποσό Παραβάσεων:</strong></span>
+                                <span class="badge bg-success fs-6">{{ total_amount }}€</span>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -139,7 +147,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" disabled {% if violation.vehicle_license_removed %}checked{% endif %}>
+                            <input class="form-check-input" type="checkbox" disabled {% if violation.registration_removed %}checked{% endif %}>
                             <label class="form-check-label">Άδεια Κυκλοφορίας</label>
                         </div>
                     </div>
@@ -148,7 +156,7 @@
         </div>
 
         <!-- Στοιχεία Οδηγού -->
-        {% if violation.driver_lastname or violation.driver_firstname %}
+        {% if violation.driver_last_name or violation.driver_first_name %}
         <div class="card mb-4">
             <div class="card-header">
                 <h4><i class="fas fa-user me-2"></i>Στοιχεία Οδηγού/Παραβάτη</h4>
@@ -156,16 +164,16 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <strong>Επώνυμο:</strong> {{ violation.driver_lastname or '-' }}
+                        <strong>Επώνυμο:</strong> {{ violation.driver_last_name or '-' }}
                     </div>
                     <div class="col-md-6 mb-3">
-                        <strong>Όνομα:</strong> {{ violation.driver_firstname or '-' }}
+                        <strong>Όνομα:</strong> {{ violation.driver_first_name or '-' }}
                     </div>
                     <div class="col-md-6 mb-3">
-                        <strong>Όνομα Πατρός:</strong> {{ violation.driver_fathername or '-' }}
+                        <strong>Όνομα Πατρός:</strong> {{ violation.driver_father_name or '-' }}
                     </div>
                     <div class="col-md-6 mb-3">
-                        <strong>ΑΦΜ:</strong> {{ violation.driver_tax_number or '-' }}
+                        <strong>ΑΦΜ:</strong> {{ violation.driver_afm or '-' }}
                     </div>
                 </div>
             </div>
@@ -190,13 +198,13 @@
         {% endif %}
 
         <!-- Υπογραφή -->
-        {% if violation.signature %}
+        {% if violation.driver_signature %}
         <div class="card mb-4">
             <div class="card-header">
                 <h5><i class="fas fa-signature me-2"></i>Υπογραφή</h5>
             </div>
             <div class="card-body text-center">
-                <img src="{{ violation.signature }}" class="img-fluid border rounded" alt="Υπογραφή"
+                <img src="{{ violation.driver_signature }}" class="img-fluid border rounded" alt="Υπογραφή"
                      onclick="showImageModal(this.src)">
                 <br><small class="text-muted mt-2 d-block">Κάντε κλικ για μεγέθυνση</small>
             </div>
@@ -255,6 +263,15 @@ function showImageModal(imageSrc) {
 
 .alert-warning {
     border-left: 4px solid #ffc107;
+}
+
+.alert-info {
+    border-left: 4px solid #0dcaf0;
+}
+
+.badge.fs-6 {
+    font-size: 1.1rem !important;
+    padding: 0.5rem 0.75rem;
 }
 </style>
 {% endblock %}
