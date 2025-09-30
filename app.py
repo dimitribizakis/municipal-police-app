@@ -762,7 +762,67 @@ def ensure_database_initialized():
             _db_initialized = True
         except Exception as e:
             print(f"Database initialization failed: {e}")
-
+@app.route('/fix-database-migration')
+def fix_database_migration():
+    """Προσωρινό route για migration - ΔΙΑΓΡΑΨΕ ΜΕΤΑ ΤΗ ΧΡΗΣΗ"""
+    import psycopg2
+    
+    try:
+        # Παίρνουμε το DATABASE_URL από το environment
+        database_url = os.environ.get('DATABASE_URL')
+        
+        if not database_url:
+            return "❌ Δεν βρέθηκε DATABASE_URL", 500
+        
+        # Parse το URL για PostgreSQL
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        
+        # Σύνδεση στη βάση δεδομένων
+        conn = psycopg2.connect(database_url)
+        cursor = conn.cursor()
+        
+        results = []
+        results.append("🔗 Συνδέθηκα στη βάση δεδομένων...")
+        
+        # SQL commands για να κάνουμε τα driver fields nullable
+        migration_commands = [
+            "ALTER TABLE violation ALTER COLUMN driver_last_name DROP NOT NULL;",
+            "ALTER TABLE violation ALTER COLUMN driver_first_name DROP NOT NULL;", 
+            "ALTER TABLE violation ALTER COLUMN driver_father_name DROP NOT NULL;",
+            "ALTER TABLE violation ALTER COLUMN driver_afm DROP NOT NULL;",
+            "ALTER TABLE violation ALTER COLUMN driver_signature DROP NOT NULL;"
+        ]
+        
+        results.append("📝 Εκτελώ migration commands...")
+        
+        for i, command in enumerate(migration_commands, 1):
+            try:
+                cursor.execute(command)
+                field_name = command.split("ALTER COLUMN ")[1].split(" DROP")[0]
+                results.append(f"✅ ({i}/5) {field_name} έγινε nullable")
+            except Exception as e:
+                if "does not exist" in str(e) or "already" in str(e).lower():
+                    results.append(f"⚠️  Το πεδίο ήταν ήδη nullable")
+                else:
+                    results.append(f"❌ Σφάλμα: {e}")
+        
+        # Commit τις αλλαγές
+        conn.commit()
+        results.append("")
+        results.append("🎉 Migration ολοκληρώθηκε επιτυχώς!")
+        results.append("Τώρα τα στοιχεία οδηγού είναι προαιρετικά στη βάση δεδομένων.")
+        results.append("")
+        results.append("⚠️ ΣΗΜΑΝΤΙΚΟ: Διάγραψε αυτό το route από το app.py μετά τη χρήση!")
+        results.append("")
+        results.append("✅ Η εφαρμογή σου είναι έτοιμη - δοκίμασε την καταχώρηση χωρίς 'Παραβάτης'!")
+        
+        conn.close()
+        
+        return "<pre style='font-family: monospace; background: #f5f5f5; padding: 20px; border-radius: 5px;'>" + "\n".join(results) + "</pre>"
+        
+    except Exception as e:
+        return f"<pre style='color: red;'>❌ Σφάλμα: {e}</pre>", 500
 if __name__ == '__main__':
     # Development mode
     with app.app_context():
