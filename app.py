@@ -186,6 +186,11 @@ def get_current_user():
         return User.query.get(session['user_id'])
     return None
 
+@app.context_processor
+def inject_user():
+    """Κάνει διαθέσιμη τη μεταβλητή current_user σε όλα τα templates"""
+    return dict(current_user=get_current_user())
+
 def save_uploaded_file(file):
     """Αποθήκευση φωτογραφίας"""
     if file and file.filename:
