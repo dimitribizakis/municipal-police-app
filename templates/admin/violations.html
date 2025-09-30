@@ -184,10 +184,6 @@
                                            class="btn btn-outline-warning" title="Επεξεργασία">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <button type="button" class="btn btn-outline-danger" 
-                                                onclick="deleteViolation({{ violation.id }})" title="Διαγραφή">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -300,29 +296,6 @@ function toggleFilters() {
         panel.style.display = 'block';
     } else {
         panel.style.display = 'none';
-    }
-}
-
-function deleteViolation(violationId) {
-    if (confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την παράβαση;\n\nΗ ενέργεια δεν μπορεί να αναιρεθεί.')) {
-        fetch(`/admin/violations/${violationId}/delete`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Σφάλμα κατά τη διαγραφή: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Σφάλμα δικτύου');
-        });
     }
 }
 
