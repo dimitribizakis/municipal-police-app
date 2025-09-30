@@ -450,7 +450,7 @@ def view_violations():
             Violation.created_at.desc()
         ).paginate(page=page, per_page=per_page, error_out=False)
     
-    return render_template('violations_list.html', violations=violations)
+    return render_template('violations_list_v2.html', violations=violations)
 
 @app.route('/violation/<int:violation_id>')
 @login_required
@@ -762,6 +762,7 @@ def ensure_database_initialized():
             _db_initialized = True
         except Exception as e:
             print(f"Database initialization failed: {e}")
+
 if __name__ == '__main__':
     # Development mode
     with app.app_context():
