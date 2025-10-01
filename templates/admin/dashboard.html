@@ -111,15 +111,23 @@
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <a href="{{ url_for('admin_violations') }}" class="btn btn-warning w-100">
-                            <i class="fas fa-edit fa-2x d-block mb-2"></i>
-                            Επεξεργασία Παραβάσεων
+                        <a href="{{ url_for('admin_violation_types') }}" class="btn btn-success w-100">
+                            <i class="fas fa-gavel fa-2x d-block mb-2"></i>
+                            Τύποι Παραβάσεων
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <a href="{{ url_for('admin_reports') }}" class="btn btn-success w-100">
+                        <a href="{{ url_for('admin_violations') }}" class="btn btn-warning w-100">
+                            <i class="fas fa-edit fa-2x d-block mb-2"></i>
+                            Εκθέσεις Παραβάσεων
+                        </a>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <a href="{{ url_for('admin_reports') }}" class="btn btn-outline-primary w-100">
                             <i class="fas fa-chart-bar fa-2x d-block mb-2"></i>
-                            Αναφορές
+                            Αναφορές & Στατιστικά
                         </a>
                     </div>
                 </div>
@@ -128,22 +136,7 @@
     </div>
 </div>
 
-<!-- ΠΡΟΣΩΡΙΝΟ: Migration προστίμων -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="alert alert-warning d-flex justify-content-between align-items-center">
-            <div>
-                <i class="fas fa-database me-2"></i>
-                <strong>Migration Προστίμων:</strong> 
-                Προσθήκη άρθρων και ποσών στις παραβάσεις
-                <small class="d-block text-muted">⚠️ Προσωρινό κουμπί - Διαγραφή μετά τη χρήση!</small>
-            </div>
-            <button onclick="confirmMigration()" class="btn btn-warning">
-                <i class="fas fa-cogs me-1"></i>Εκτέλεση Migration
-            </button>
-        </div>
-    </div>
-</div>
+
 
 <!-- Recent Violations -->
 <div class="row">
@@ -210,13 +203,5 @@
     </div>
 </div>
 
-<script>
-function confirmMigration() {
-    if (confirm('⚠️ ΠΡΟΣΟΧΗ!\n\nΑυτό θα κάνει αλλαγές στη βάση δεδομένων.\n\nΣίγουρα θέλετε να συνεχίσετε;')) {
-        if (confirm('🔄 Τελική επιβεβαίωση!\n\nΘα προστεθούν νέα πεδία στις παραβάσεις.\nΑυτή η ενέργεια δεν μπορεί να αναιρεθεί.\n\nΠροχωράμε;')) {
-            window.location.href = '{{ url_for("migrate_fines") }}';
-        }
-    }
-}
-</script>
+
 {% endblock %}

@@ -128,11 +128,61 @@ class ViolationsData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(200), nullable=False)
     paragraph = db.Column(db.String(100), nullable=True)
+    
+    # Άρθρο ΚΟΚ
+    article = db.Column(db.String(20), nullable=True)  # π.χ. "7", "38", "49"
+    article_paragraph = db.Column(db.String(20), nullable=True)  # π.χ. "2β", "3η", "4", "2ιβ"
+    
+    # Πρόστιμα
     fine_cars = db.Column(db.Numeric(8,2), nullable=False)
     fine_motorcycles = db.Column(db.Numeric(8,2), nullable=True)
     fine_trucks = db.Column(db.Numeric(8,2), nullable=True)
+    half_fine_motorcycles = db.Column(db.Boolean, default=False)  # Μισό πρόστιμο σε δίκυκλα
+    
+    # Αφαιρέσεις - Στοιχεία Κυκλοφορίας
+    remove_circulation_elements = db.Column(db.Boolean, default=False)
+    circulation_removal_days = db.Column(db.Integer, nullable=True)  # 10 ή 40 ημέρες
+    
+    # Αφαιρέσεις - Άδεια Κυκλοφορίας
+    remove_circulation_license = db.Column(db.Boolean, default=False)
+    circulation_license_removal_days = db.Column(db.Integer, nullable=True)
+    
+    # Αφαιρέσεις - Άδεια Οδήγησης
+    remove_driving_license = db.Column(db.Boolean, default=False)
+    driving_license_removal_days = db.Column(db.Integer, nullable=True)
+    
+    # Ειδική διάταξη για στάθμευση
+    parking_special_provision = db.Column(db.Boolean, default=False)  # Άρθρο 7: Αφαίρεση στοιχείων αντί άδειας οδήγησης
+    
+    # Μεταδεδομένα
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    @property
+    def full_article(self):
+        """Επιστρέφει το πλήρες άρθρο (άρθρο + παράγραφος)"""
+        if self.article and self.article_paragraph:
+            return f"Άρθρο {self.article} παρ. {self.article_paragraph}"
+        elif self.article:
+            return f"Άρθρο {self.article}"
+        return ""
+    
+    @property
+    def display_name(self):
+        """Επιστρέφει το όνομα για εμφάνιση στη φόρμα"""
+        article_part = f" ({self.full_article})" if self.full_article else ""
+        return f"{self.description}{article_part}"
+    
+    def get_fine_for_vehicle_type(self, vehicle_type):
+        """Επιστρέφει το πρόστιμο ανάλογα με τον τύπο οχήματος"""
+        if vehicle_type.lower() in ['μοτοσικλέτα', 'μοτοποδήλατο', 'δίκυκλο']:
+            if self.half_fine_motorcycles and self.fine_motorcycles:
+                return self.fine_motorcycles / 2
+            return self.fine_motorcycles or self.fine_cars
+        elif vehicle_type.lower() in ['φορτηγό', 'λεωφορείο']:
+            return self.fine_trucks or self.fine_cars
+        return self.fine_cars
 
 class Violation(db.Model):
     """Πίνακας Παραβάσεων"""
@@ -942,8 +992,112 @@ def add_user():
 @login_required
 @admin_required
 def admin_violations():
-    """Διαχείριση παραβάσεων"""
+    """Διαχείριση εκθέσεων παραβάσεων"""
     return render_template('admin/violations.html')
+
+@app.route('/admin/violation-types')
+@login_required
+@admin_required
+def admin_violation_types():
+    """Διαχείριση τύπων παραβάσεων ΚΟΚ"""
+    violations = ViolationsData.query.filter_by(is_active=True).order_by(ViolationsData.description).all()
+    return render_template('admin/violation_types.html', violations=violations)
+
+@app.route('/admin/violation-types/new', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_violation_types_new():
+    """Νέος τύπος παράβασης ΚΟΚ"""
+    if request.method == 'POST':
+        try:
+            # Δημιουργία νέας παράβασης
+            violation = ViolationsData(
+                description=request.form.get('description'),
+                paragraph=request.form.get('paragraph'),
+                article=request.form.get('article'),
+                article_paragraph=request.form.get('article_paragraph'),
+                fine_cars=float(request.form.get('fine_cars', 0)),
+                fine_motorcycles=float(request.form.get('fine_motorcycles', 0)) if request.form.get('fine_motorcycles') else None,
+                fine_trucks=float(request.form.get('fine_trucks', 0)) if request.form.get('fine_trucks') else None,
+                half_fine_motorcycles=bool(request.form.get('half_fine_motorcycles')),
+                remove_circulation_elements=bool(request.form.get('remove_circulation_elements')),
+                circulation_removal_days=int(request.form.get('circulation_removal_days')) if request.form.get('circulation_removal_days') else None,
+                remove_circulation_license=bool(request.form.get('remove_circulation_license')),
+                circulation_license_removal_days=int(request.form.get('circulation_license_removal_days')) if request.form.get('circulation_license_removal_days') else None,
+                remove_driving_license=bool(request.form.get('remove_driving_license')),
+                driving_license_removal_days=int(request.form.get('driving_license_removal_days')) if request.form.get('driving_license_removal_days') else None,
+                parking_special_provision=bool(request.form.get('parking_special_provision'))
+            )
+            
+            db.session.add(violation)
+            db.session.commit()
+            
+            flash(f'Ο τύπος παράβασης "{violation.description}" προστέθηκε επιτυχώς!', 'success')
+            return redirect(url_for('admin_violation_types'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Σφάλμα κατά την προσθήκη τύπου παράβασης: {str(e)}', 'error')
+    
+    return render_template('admin/violation_types_form.html', action='new')
+
+@app.route('/admin/violation-types/edit/<int:violation_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_violation_types_edit(violation_id):
+    """Επεξεργασία τύπου παράβασης ΚΟΚ"""
+    violation = ViolationsData.query.get_or_404(violation_id)
+    
+    if request.method == 'POST':
+        try:
+            # Ενημέρωση παράβασης
+            violation.description = request.form.get('description')
+            violation.paragraph = request.form.get('paragraph')
+            violation.article = request.form.get('article')
+            violation.article_paragraph = request.form.get('article_paragraph')
+            violation.fine_cars = float(request.form.get('fine_cars', 0))
+            violation.fine_motorcycles = float(request.form.get('fine_motorcycles', 0)) if request.form.get('fine_motorcycles') else None
+            violation.fine_trucks = float(request.form.get('fine_trucks', 0)) if request.form.get('fine_trucks') else None
+            violation.half_fine_motorcycles = bool(request.form.get('half_fine_motorcycles'))
+            violation.remove_circulation_elements = bool(request.form.get('remove_circulation_elements'))
+            violation.circulation_removal_days = int(request.form.get('circulation_removal_days')) if request.form.get('circulation_removal_days') else None
+            violation.remove_circulation_license = bool(request.form.get('remove_circulation_license'))
+            violation.circulation_license_removal_days = int(request.form.get('circulation_license_removal_days')) if request.form.get('circulation_license_removal_days') else None
+            violation.remove_driving_license = bool(request.form.get('remove_driving_license'))
+            violation.driving_license_removal_days = int(request.form.get('driving_license_removal_days')) if request.form.get('driving_license_removal_days') else None
+            violation.parking_special_provision = bool(request.form.get('parking_special_provision'))
+            violation.updated_at = datetime.now()
+            
+            db.session.commit()
+            
+            flash(f'Ο τύπος παράβασης "{violation.description}" ενημερώθηκε επιτυχώς!', 'success')
+            return redirect(url_for('admin_violation_types'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Σφάλμα κατά την ενημέρωση τύπου παράβασης: {str(e)}', 'error')
+    
+    return render_template('admin/violation_types_form.html', action='edit', violation=violation)
+
+@app.route('/admin/violation-types/delete/<int:violation_id>', methods=['POST'])
+@login_required
+@admin_required
+def admin_violation_types_delete(violation_id):
+    """Διαγραφή τύπου παράβασης ΚΟΚ (soft delete)"""
+    violation = ViolationsData.query.get_or_404(violation_id)
+    
+    try:
+        # Soft delete - απλά το κάνουμε inactive
+        violation.is_active = False
+        violation.updated_at = datetime.now()
+        db.session.commit()
+        
+        flash(f'Ο τύπος παράβασης "{violation.description}" διαγράφηκε επιτυχώς!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Σφάλμα κατά τη διαγραφή τύπου παράβασης: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_violation_types'))
 
 @app.route('/admin/reports') 
 @login_required
@@ -1223,9 +1377,10 @@ def submit_violation():
             )
             db.session.add(new_type)
         
-        # Στοιχεία παράβασης
-        violation_date = datetime.strptime(request.form['violation_date'], '%Y-%m-%d').date()
-        violation_time = datetime.strptime(request.form['violation_time'], '%H:%M').time()
+        # Στοιχεία παράβασης - Αυτόματη ημερομηνία/ώρα
+        current_datetime = datetime.now()
+        violation_date = current_datetime.date()
+        violation_time = current_datetime.time()
         street = request.form['street'].strip()
         street_number = request.form['street_number'].strip()
         

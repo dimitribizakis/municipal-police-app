@@ -141,19 +141,43 @@
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label for="violation_date" class="form-label">
-                                <i class="fas fa-calendar me-1"></i>Ημερομηνία Παράβασης *
+                            <label for="violation_date_display" class="form-label">
+                                <i class="fas fa-calendar me-1"></i>Ημερομηνία Παράβασης
                             </label>
-                            <input type="date" class="form-control" id="violation_date" name="violation_date" 
-                                   value="{{ datetime.now().strftime('%Y-%m-%d') }}" required>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-calendar-day text-success"></i>
+                                </span>
+                                <input type="text" class="form-control" id="violation_date_display" 
+                                       value="{{ datetime.now().strftime('%d/%m/%Y') }}" readonly 
+                                       style="background-color: #e8f5e8; border-color: #28a745;">
+                                <span class="input-group-text text-success">
+                                    <small><i class="fas fa-check"></i> Αυτόματη</small>
+                                </span>
+                            </div>
+                            <small class="text-success">
+                                <i class="fas fa-info-circle me-1"></i>Η ημερομηνία ορίζεται αυτόματα από το σύστημα
+                            </small>
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label for="violation_time" class="form-label">
-                                <i class="fas fa-clock me-1"></i>Ώρα Παράβασης *
+                            <label for="violation_time_display" class="form-label">
+                                <i class="fas fa-clock me-1"></i>Ώρα Παράβασης
                             </label>
-                            <input type="time" class="form-control" id="violation_time" name="violation_time" 
-                                   value="{{ datetime.now().strftime('%H:%M') }}" required>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-clock text-success"></i>
+                                </span>
+                                <input type="text" class="form-control" id="violation_time_display" 
+                                       value="{{ datetime.now().strftime('%H:%M') }}" readonly 
+                                       style="background-color: #e8f5e8; border-color: #28a745;">
+                                <span class="input-group-text text-success">
+                                    <small><i class="fas fa-check"></i> Αυτόματη</small>
+                                </span>
+                            </div>
+                            <small class="text-success">
+                                <i class="fas fa-info-circle me-1"></i>Η ώρα ορίζεται αυτόματα από το σύστημα
+                            </small>
                         </div>
                         
                         <div class="col-md-8 mb-3">
@@ -176,21 +200,64 @@
                             <label class="form-label">
                                 <i class="fas fa-list me-1"></i>Παραβάσεις *
                             </label>
-                            <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
                                 {% for violation in violations %}
-                                <div class="form-check">
+                                <div class="form-check mb-3 border-bottom pb-2">
                                     <input class="form-check-input violation-checkbox" type="checkbox" name="violations" 
                                            value="{{ violation.id }}" id="violation_{{ loop.index }}"
-                                           data-fine="{{ violation.fine_cars }}">
-                                    <label class="form-check-label" for="violation_{{ loop.index }}">
+                                           data-fine="{{ violation.fine_cars }}"
+                                           data-description="{{ violation.description }}"
+                                           data-article="{{ violation.full_article if violation.full_article else '' }}"
+                                           data-remove-circulation="{{ 'true' if violation.remove_circulation_elements else 'false' }}"
+                                           data-remove-license="{{ 'true' if violation.remove_driving_license else 'false' }}"
+                                           data-remove-registration="{{ 'true' if violation.remove_circulation_license else 'false' }}"
+                                           data-parking-special="{{ 'true' if violation.parking_special_provision else 'false' }}">
+                                    <label class="form-check-label w-100" for="violation_{{ loop.index }}">
                                         <div class="d-flex justify-content-between align-items-start">
-                                            <div>
+                                            <div class="flex-grow-1">
                                                 <strong>{{ violation.description }}</strong>
+                                                {% if violation.full_article %}
+                                                <span class="badge bg-info ms-2">{{ violation.full_article }}</span>
+                                                {% endif %}
                                                 {% if violation.paragraph %}
-                                                <small class="text-primary d-block">{{ violation.paragraph }}</small>
+                                                <small class="text-primary d-block mt-1">{{ violation.paragraph }}</small>
+                                                {% endif %}
+                                                
+                                                <!-- Επιτόπια Μέτρα -->
+                                                {% if violation.remove_circulation_elements or violation.remove_driving_license or violation.remove_circulation_license %}
+                                                <div class="mt-2">
+                                                    <small class="text-warning">
+                                                        <i class="fas fa-exclamation-triangle me-1"></i>Επιτόπια μέτρα:
+                                                        {% if violation.remove_circulation_elements %}
+                                                            <i class="fas fa-square text-danger ms-1" title="Αφαίρεση στοιχείων κυκλοφορίας"></i>
+                                                            {% if violation.circulation_removal_days %}({{ violation.circulation_removal_days }}η){% endif %}
+                                                        {% endif %}
+                                                        {% if violation.remove_circulation_license %}
+                                                            <i class="fas fa-id-card text-warning ms-1" title="Αφαίρεση άδειας κυκλοφορίας"></i>
+                                                            {% if violation.circulation_license_removal_days %}({{ violation.circulation_license_removal_days }}η){% endif %}
+                                                        {% endif %}
+                                                        {% if violation.remove_driving_license %}
+                                                            <i class="fas fa-drivers-license text-danger ms-1" title="Αφαίρεση άδειας οδήγησης"></i>
+                                                            {% if violation.driving_license_removal_days %}({{ violation.driving_license_removal_days }}η){% endif %}
+                                                        {% endif %}
+                                                    </small>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {% if violation.parking_special_provision %}
+                                                <div class="mt-1">
+                                                    <small class="text-info">
+                                                        <i class="fas fa-info-circle me-1"></i>Ειδική διάταξη στάθμευσης
+                                                    </small>
+                                                </div>
                                                 {% endif %}
                                             </div>
-                                            <span class="badge bg-danger ms-2">{{ violation.fine_cars }}€</span>
+                                            <div class="text-end">
+                                                <span class="badge bg-danger">{{ violation.fine_cars }}€</span>
+                                                {% if violation.half_fine_motorcycles %}
+                                                <br><small class="text-warning">½ για δίκυκλα</small>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                     </label>
                                 </div>
@@ -447,15 +514,91 @@
     let canvas, ctx, isDrawing = false;
     let signatureExists = false;
 
-    // Calculate total amount of selected violations
+    // Calculate total amount of selected violations and update on-site measures
     function updateTotalAmount() {
         const checkedBoxes = document.querySelectorAll('.violation-checkbox:checked');
         let total = 0;
+        let requiresCirculationRemoval = false;
+        let requiresLicenseRemoval = false;
+        let requiresRegistrationRemoval = false;
+        
         checkedBoxes.forEach(checkbox => {
             const fine = parseInt(checkbox.getAttribute('data-fine')) || 0;
             total += fine;
+            
+            // Check for on-site measures
+            if (checkbox.getAttribute('data-remove-circulation') === 'true') {
+                requiresCirculationRemoval = true;
+            }
+            if (checkbox.getAttribute('data-remove-license') === 'true') {
+                requiresLicenseRemoval = true;
+            }
+            if (checkbox.getAttribute('data-remove-registration') === 'true') {
+                requiresRegistrationRemoval = true;
+            }
         });
+        
         document.getElementById('totalAmount').textContent = total;
+        
+        // Auto-update on-site measures based on selected violations
+        updateOnSiteMeasures(requiresCirculationRemoval, requiresLicenseRemoval, requiresRegistrationRemoval);
+    }
+    
+    // Update on-site measures checkboxes based on selected violations
+    function updateOnSiteMeasures(circulation, license, registration) {
+        const platesCheckbox = document.getElementById('plates_removed');
+        const licenseCheckbox = document.getElementById('license_removed');
+        const registrationCheckbox = document.getElementById('registration_removed');
+        
+        if (platesCheckbox && circulation) {
+            platesCheckbox.checked = true;
+            platesCheckbox.closest('.form-check').classList.add('bg-warning', 'bg-opacity-25');
+        } else if (platesCheckbox) {
+            platesCheckbox.closest('.form-check').classList.remove('bg-warning', 'bg-opacity-25');
+        }
+        
+        if (licenseCheckbox && license) {
+            licenseCheckbox.checked = true;
+            licenseCheckbox.closest('.form-check').classList.add('bg-warning', 'bg-opacity-25');
+        } else if (licenseCheckbox) {
+            licenseCheckbox.closest('.form-check').classList.remove('bg-warning', 'bg-opacity-25');
+        }
+        
+        if (registrationCheckbox && registration) {
+            registrationCheckbox.checked = true;
+            registrationCheckbox.closest('.form-check').classList.add('bg-warning', 'bg-opacity-25');
+        } else if (registrationCheckbox) {
+            registrationCheckbox.closest('.form-check').classList.remove('bg-warning', 'bg-opacity-25');
+        }
+    }
+    
+    // Show violation details tooltip
+    function showViolationDetails(violationId) {
+        const checkbox = document.getElementById('violation_' + violationId);
+        if (checkbox) {
+            const description = checkbox.getAttribute('data-description');
+            const article = checkbox.getAttribute('data-article');
+            const onSiteMeasures = [];
+            
+            if (checkbox.getAttribute('data-remove-circulation') === 'true') {
+                onSiteMeasures.push('Αφαίρεση στοιχείων κυκλοφορίας');
+            }
+            if (checkbox.getAttribute('data-remove-license') === 'true') {
+                onSiteMeasures.push('Αφαίρεση άδειας οδήγησης');
+            }
+            if (checkbox.getAttribute('data-remove-registration') === 'true') {
+                onSiteMeasures.push('Αφαίρεση άδειας κυκλοφορίας');
+            }
+            
+            let details = description;
+            if (article) details += '\n' + article;
+            if (onSiteMeasures.length > 0) {
+                details += '\n\nΕπιτόπια μέτρα:\n• ' + onSiteMeasures.join('\n• ');
+            }
+            
+            return details;
+        }
+        return '';
     }
 
     // Add event listeners to all violation checkboxes
