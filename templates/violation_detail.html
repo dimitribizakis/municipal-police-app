@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base_v2.html" %}
 
 {% block title %}Αναλυτική Προβολή Παράβασης - {{ super() }}{% endblock %}
 
@@ -25,11 +25,11 @@
                 <a href="{{ url_for('view_violations') }}" class="btn btn-outline-primary me-2">
                     <i class="fas fa-arrow-left me-1"></i>Επιστροφή στη Λίστα
                 </a>
-                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-2">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary me-2">
                     <i class="fas fa-home me-1"></i>Κεντρική
                 </a>
                 <small class="text-muted">
-                    <i class="fas fa-user me-1"></i>Συνδεδεμένος ως: {{ current_user.first_name }} {{ current_user.last_name }}
+                    <i class="fas fa-user me-1"></i>Συνδεδεμένος ως: {{ user.first_name }} {{ user.last_name }}
                 </small>
             </div>
             <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
@@ -83,7 +83,7 @@
                         <strong>Τοποθεσία:</strong> {{ violation.street }}
                         {% if violation.street_number %} {{ violation.street_number }}{% endif %}
                     </div>
-                    {% if current_user.role == 'admin' %}
+                    {% if user.role == 'admin' %}
                     <div class="col-md-12 mb-3">
                         <strong>Δημοτικός Αστυνομικός:</strong> {{ violation.officer.first_name }} {{ violation.officer.last_name }}
                     </div>
