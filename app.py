@@ -498,15 +498,77 @@ def dashboard():
     
     return render_template('dashboard/central_menu.html', user=user, stats=stats)
 
+@app.route('/index')
+@app.route('/new-violation')
+@login_required
+def new_violation():
+    """Φόρμα δημιουργίας νέας παράβασης"""
+    user = User.query.get(session['user_id'])
+    return render_template('index.html', user=user)
+
+@app.route('/search')
+@login_required 
+def search():
+    """Σελίδα αναζήτησης παραβάσεων"""
+    # Για τώρα ανακατεύθυνση στη λίστα παραβάσεων με search capability
+    return redirect(url_for('view_violations'))
+
+@app.route('/statistics')
+@login_required
+def statistics():
+    """Σελίδα στατιστικών"""
+    user = User.query.get(session['user_id'])
+    
+    # Βασικά στατιστικά
+    total_violations = Violation.query.count()
+    my_violations = Violation.query.filter_by(officer_id=user.id).count() if hasattr(Violation, 'officer_id') else 0
+    
+    # Στατιστικά παραβάσεων
+    today_violations = Violation.query.filter(
+        Violation.violation_date == datetime.now().date()
+    ).count()
+    
+    this_month_violations = Violation.query.filter(
+        Violation.violation_date >= datetime.now().replace(day=1).date()
+    ).count()
+    
+    stats = {
+        'total_violations': total_violations,
+        'my_violations': my_violations,
+        'today_violations': today_violations,
+        'this_month_violations': this_month_violations,
+        'with_photos': Violation.query.filter(Violation.photo_filename.isnot(None)).count(),
+        'with_removal': Violation.query.filter(Violation.plates_removed == True).count()
+    }
+    
+    return render_template('dashboard/central_menu.html', user=user, stats=stats, show_statistics=True)
+
 @app.route('/violations')
 @login_required
 def view_violations():
-    """Προβολή όλων των παραβάσεων"""
+    """Προβολή όλων των παραβάσεων με δυνατότητα αναζήτησης"""
     page = request.args.get('page', 1, type=int)
+    search_plate = request.args.get('search_plate', '', type=str).strip()
     per_page = 50  # Αριθμός παραβάσεων ανά σελίδα
     
+    # Ξεκινάμε με το βασικό query
+    query = Violation.query
+    
+    # Αν υπάρχει αναζήτηση, φιλτράρουμε
+    if search_plate:
+        # Αφαιρούμε spaces και dashes για πιο ευέλικτη αναζήτηση
+        search_clean = search_plate.replace(' ', '').replace('-', '').upper()
+        # Φιλτράρουμε με LIKE pattern για case-insensitive αναζήτηση
+        query = query.filter(
+            db.func.replace(
+                db.func.replace(
+                    db.func.upper(Violation.license_plate), ' ', ''
+                ), '-', ''
+            ).like(f'%{search_clean}%')
+        )
+    
     # Παίρνουμε τις παραβάσεις με pagination
-    violations = Violation.query.order_by(Violation.id.desc()).paginate(
+    violations = query.order_by(Violation.id.desc()).paginate(
         page=page, 
         per_page=per_page, 
         error_out=False
