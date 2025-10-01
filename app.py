@@ -521,7 +521,13 @@ def statistics():
     
     # Βασικά στατιστικά
     total_violations = Violation.query.count()
-    my_violations = Violation.query.filter_by(officer_id=user.id).count() if hasattr(Violation, 'officer_id') else 0
+    my_violations = Violation.query.filter_by(officer_id=user.id).count()
+    
+    # Αδιάβαστα μηνύματα (για συμβατότητα με το template)
+    unread_messages = MessageRecipient.query.filter_by(
+        recipient_id=user.id, 
+        is_read=False
+    ).count()
     
     # Στατιστικά παραβάσεων
     today_violations = Violation.query.filter(
@@ -532,16 +538,21 @@ def statistics():
         Violation.violation_date >= datetime.now().replace(day=1).date()
     ).count()
     
+    # Στατιστικά με φωτογραφίες και αφαιρέσεις
+    with_photos = Violation.query.filter(Violation.photo_filename != None).count()
+    with_removal = Violation.query.filter(Violation.plates_removed == True).count()
+    
     stats = {
         'total_violations': total_violations,
         'my_violations': my_violations,
+        'unread_messages': unread_messages,
         'today_violations': today_violations,
         'this_month_violations': this_month_violations,
-        'with_photos': Violation.query.filter(Violation.photo_filename.isnot(None)).count(),
-        'with_removal': Violation.query.filter(Violation.plates_removed == True).count()
+        'with_photos': with_photos,
+        'with_removal': with_removal
     }
     
-    return render_template('dashboard/central_menu.html', user=user, stats=stats, show_statistics=True)
+    return render_template('dashboard/central_menu.html', user=user, stats=stats)
 
 @app.route('/violations')
 @login_required
