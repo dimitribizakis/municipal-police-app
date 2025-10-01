@@ -1,0 +1,77 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Εισερχόμενα Μηνύματα{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-inbox mr-2"></i>
+                        Εισερχόμενα Μηνύματα
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Αποστολέας</th>
+                                        <th>Θέμα</th>
+                                        <th>Ημερομηνία</th>
+                                        <th>Κατάσταση</th>
+                                        <th>Ενέργειες</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for message, recipient in messages %}
+                                    <tr class="{% if not recipient.is_read %}table-warning{% endif %}">
+                                        <td>{{ message.sender.full_name }}</td>
+                                        <td>{{ message.subject }}</td>
+                                        <td>{{ message.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                        <td>
+                                            {% if recipient.is_read %}
+                                                <span class="badge badge-success">Διαβάστηκε</span>
+                                            {% else %}
+                                                <span class="badge badge-warning">Νέο</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('view_message', message_id=message.id) }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> Προβολή
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Δεν υπάρχουν μηνύματα</h5>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer d-flex justify-content-between">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left mr-2"></i>Επιστροφή
+                    </a>
+                    <div>
+                        <a href="{{ url_for('messages_sent') }}" class="btn btn-info mr-2">
+                            <i class="fas fa-paper-plane mr-2"></i>Απεσταλμένα
+                        </a>
+                        <a href="{{ url_for('new_message') }}" class="btn btn-success">
+                            <i class="fas fa-plus mr-2"></i>Νέο Μήνυμα
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
