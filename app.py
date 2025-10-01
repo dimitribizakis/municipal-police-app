@@ -1146,6 +1146,12 @@ def update_violation(violation_id):
         license_removed = 'license_removed' in request.form  
         registration_removed = 'registration_removed' in request.form
         
+        # Στοιχεία οδηγού (αν υπάρχουν στη φόρμα)
+        driver_last_name = request.form.get('driver_last_name', '').strip() or None
+        driver_first_name = request.form.get('driver_first_name', '').strip() or None
+        driver_father_name = request.form.get('driver_father_name', '').strip() or None
+        driver_afm = request.form.get('driver_afm', '').strip() or None
+        
         # Ενημέρωση παράβασης
         violation.license_plate = license_plate
         violation.vehicle_brand = vehicle_brand
@@ -1159,9 +1165,24 @@ def update_violation(violation_id):
         violation.plates_removed = plates_removed
         violation.license_removed = license_removed
         violation.registration_removed = registration_removed
+        
+        # Ενημέρωση στοιχείων οδηγού
+        violation.driver_last_name = driver_last_name
+        violation.driver_first_name = driver_first_name
+        violation.driver_father_name = driver_father_name
+        violation.driver_afm = driver_afm
+        
         violation.updated_at = datetime.utcnow()
         
         db.session.commit()
+        
+        # Δημιουργία notification για την επεξεργασία
+        create_notification(
+            user_id=session['user_id'],
+            title="Παράβαση Ενημερώθηκε",
+            message=f"Η παράβαση #{violation_id} για το όχημα {license_plate} ενημερώθηκε επιτυχώς.",
+            notification_type="info"
+        )
         
         flash('Η παράβαση ενημερώθηκε επιτυχώς!', 'success')
         return redirect(url_for('view_violations'))
