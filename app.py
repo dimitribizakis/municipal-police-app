@@ -185,6 +185,19 @@ class Violation(db.Model):
         except:
             return []
     
+    def get_fine_breakdown_dict(self):
+        """Επιστρέφει την ανάλυση προστίμων ως dictionary"""
+        try:
+            if self.fine_breakdown:
+                data = json.loads(self.fine_breakdown)
+                if isinstance(data, list):
+                    return data
+                elif isinstance(data, dict):
+                    return [data]
+            return []
+        except:
+            return []
+    
     @property
     def formatted_fine_amount(self):
         """Επιστρέφει το ποσό προστίμου μορφοποιημένο"""
@@ -503,6 +516,15 @@ def view_violations():
     user = User.query.get(session['user_id'])
     
     return render_template('violations_list_v2.html', violations=violations, user=user)
+
+@app.route('/violation/<int:violation_id>')
+@login_required
+def view_violation(violation_id):
+    """Προβολή λεπτομερειών παράβασης"""
+    violation = Violation.query.get_or_404(violation_id)
+    user = User.query.get(session['user_id'])
+    
+    return render_template('violation_detail.html', violation=violation, user=user)
 
 # ======================== MODULE ROUTES ========================
 
