@@ -1,0 +1,318 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Επεξεργασία Παραβάσεων - Admin{% endblock %}
+
+{% block content %}
+<!-- Navigation Header -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-arrow-left me-1"></i>Επιστροφή στο Dashboard
+                </a>
+                <small class="text-muted">
+                    <i class="fas fa-user-shield me-1"></i>Admin: {{ current_user.first_name }} {{ current_user.last_name }}
+                </small>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
+                <i class="fas fa-sign-out-alt me-1"></i>Αποσύνδεση
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="text-primary">
+            <i class="fas fa-edit me-2"></i>Επεξεργασία Παραβάσεων
+        </h2>
+        <p class="text-muted">Προβολή και επεξεργασία όλων των καταχωρημένων παραβάσεων</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <button class="btn btn-outline-primary" onclick="toggleFilters()">
+            <i class="fas fa-filter me-1"></i>Φίλτρα
+        </button>
+    </div>
+</div>
+
+<!-- Filters (collapsed by default) -->
+<div class="row mb-4" id="filtersPanel" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-search me-2"></i>Φίλτρα Αναζήτησης
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('admin_violations') }}">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="license_plate" class="form-label">Πινακίδα</label>
+                            <input type="text" class="form-control" id="license_plate" name="license_plate" 
+                                   value="{{ request.args.get('license_plate', '') }}" placeholder="π.χ. ABC-1234">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="officer_id" class="form-label">Αστυνομικός</label>
+                            <select class="form-select" id="officer_id" name="officer_id">
+                                <option value="">Όλοι</option>
+                                <!-- Officers will be populated here -->
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="start_date" class="form-label">Από Ημερομηνία</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" 
+                                   value="{{ request.args.get('start_date', '') }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="end_date" class="form-label">Έως Ημερομηνία</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" 
+                                   value="{{ request.args.get('end_date', '') }}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Αναζήτηση
+                            </button>
+                            <a href="{{ url_for('admin_violations') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Καθαρισμός
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Violations List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Λίστα Παραβάσεων
+                </h5>
+                {% if violations.items %}
+                <small class="text-muted">
+                    Εμφάνιση {{ violations.page * violations.per_page - violations.per_page + 1 }} - 
+                    {{ violations.page * violations.per_page if violations.page * violations.per_page <= violations.total else violations.total }} 
+                    από {{ violations.total }} συνολικά
+                </small>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if violations.items %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Ημερομηνία</th>
+                                <th>Ώρα</th>
+                                <th>Πινακίδα</th>
+                                <th>Όχημα</th>
+                                <th>Τοποθεσία</th>
+                                <th>Αστυνομικός</th>
+                                <th>Παραβάσεις</th>
+                                <th>Πρόστιμο</th>
+                                <th>Μέτρα</th>
+                                <th>Ενέργειες</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for violation in violations.items %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-primary">#{{ violation.id }}</span>
+                                </td>
+                                <td>{{ violation.violation_date.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ violation.violation_time.strftime('%H:%M') }}</td>
+                                <td>
+                                    <strong>{{ violation.license_plate }}</strong>
+                                </td>
+                                <td>
+                                    <small>
+                                        {{ violation.vehicle_brand }}<br>
+                                        <span class="text-muted">{{ violation.vehicle_color }} {{ violation.vehicle_type }}</span>
+                                    </small>
+                                </td>
+                                <td>
+                                    <small>{{ violation.street }} {{ violation.street_number }}</small>
+                                </td>
+                                <td>
+                                    <small>
+                                        {{ violation.officer.rank }}<br>
+                                        {{ violation.officer.first_name }} {{ violation.officer.last_name }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% set selected_violations = violation.get_selected_violations_list() %}
+                                    <small>
+                                        {% for violation_code in selected_violations[:2] %}
+                                            <span class="badge bg-warning">{{ violation_code }}</span>
+                                        {% endfor %}
+                                        {% if selected_violations|length > 2 %}
+                                            <span class="badge bg-secondary">+{{ selected_violations|length - 2 }}</span>
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if violation.total_fine_amount %}
+                                        <span class="badge bg-success">{{ violation.total_fine_amount }}€</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>
+                                        {% if violation.plates_removed %}
+                                            <i class="fas fa-square text-danger" title="Αφαίρεση πινακίδων"></i>
+                                        {% endif %}
+                                        {% if violation.license_removed %}
+                                            <i class="fas fa-id-card text-warning" title="Αφαίρεση άδειας οδήγησης"></i>
+                                        {% endif %}
+                                        {% if violation.registration_removed %}
+                                            <i class="fas fa-file-alt text-info" title="Αφαίρεση άδειας κυκλοφορίας"></i>
+                                        {% endif %}
+                                        {% if violation.photo_filename %}
+                                            <i class="fas fa-camera text-success" title="Φωτογραφία"></i>
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('view_violation', violation_id=violation.id) }}" 
+                                           class="btn btn-outline-info" title="Προβολή">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('admin_edit_violation', violation_id=violation.id) }}" 
+                                           class="btn btn-outline-warning" title="Επεξεργασία">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if violations.pages > 1 %}
+                <nav aria-label="Pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if violations.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin_violations', page=violations.prev_num) }}">
+                                <i class="fas fa-chevron-left"></i> Προηγούμενη
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in violations.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != violations.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_violations', page=page_num) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if violations.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin_violations', page=violations.next_num) }}">
+                                Επόμενη <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Δεν βρέθηκαν παραβάσεις με τα επιλεγμένα κριτήρια</p>
+                    <button class="btn btn-outline-primary" onclick="toggleFilters()">
+                        <i class="fas fa-filter me-1"></i>Τροποποίηση Φίλτρων
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+{% if violations.items %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h4>{{ violations.total }}</h4>
+                <p class="mb-0">Συνολικές Παραβάσεις</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h4>{{ violations.items|selectattr('plates_removed')|list|length }}</h4>
+                <p class="mb-0">Αφαιρέσεις Πινακίδων</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h4>{{ violations.items|selectattr('license_removed')|list|length }}</h4>
+                <p class="mb-0">Αφαιρέσεις Αδειών</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h4>{{ violations.items|selectattr('photo_filename')|list|length }}</h4>
+                <p class="mb-0">Με Φωτογραφίες</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleFilters() {
+    const panel = document.getElementById('filtersPanel');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+// Auto-populate end date when start date is selected
+document.getElementById('start_date').addEventListener('change', function() {
+    const endDate = document.getElementById('end_date');
+    if (!endDate.value) {
+        endDate.value = this.value;
+    }
+});
+</script>
+{% endblock %}

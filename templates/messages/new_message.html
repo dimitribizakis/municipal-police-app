@@ -1,0 +1,114 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Νέο Μήνυμα{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-pen mr-2"></i>
+                        Σύνθεση Νέου Μηνύματος
+                    </h3>
+                </div>
+                <form method="POST">
+                    <div class="card-body">
+                        <!-- Παραλήπτες -->
+                        <div class="form-group mb-3">
+                            <label for="recipients" class="form-label">
+                                <i class="fas fa-users mr-2"></i>Παραλήπτες *
+                            </label>
+                            
+                            {% if current_user.can_send_mass_messages() %}
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="selectAll">
+                                <label class="form-check-label" for="selectAll">
+                                    <strong>Επιλογή όλων</strong>
+                                </label>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="recipient-list" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                                {% for recipient in recipients %}
+                                <div class="form-check">
+                                    <input class="form-check-input recipient-checkbox" type="checkbox" name="recipients" value="{{ recipient.id }}" id="recipient_{{ recipient.id }}">
+                                    <label class="form-check-label" for="recipient_{{ recipient.id }}">
+                                        {{ recipient.full_name }} ({{ recipient.role_display }})
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            {% if not current_user.can_send_mass_messages() %}
+                            <small class="form-text text-muted">
+                                Ως {{ current_user.role_display }}, μπορείτε να στείλετε μήνυμα μόνο σε έναν παραλήπτη κάθε φορά.
+                            </small>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Θέμα -->
+                        <div class="form-group mb-3">
+                            <label for="subject" class="form-label">
+                                <i class="fas fa-tag mr-2"></i>Θέμα *
+                            </label>
+                            <input type="text" class="form-control" id="subject" name="subject" required maxlength="200" placeholder="Εισάγετε το θέμα του μηνύματος">
+                        </div>
+                        
+                        <!-- Περιεχόμενο -->
+                        <div class="form-group mb-3">
+                            <label for="content" class="form-label">
+                                <i class="fas fa-comment mr-2"></i>Περιεχόμενο *
+                            </label>
+                            <textarea class="form-control" id="content" name="content" rows="8" required placeholder="Γράψτε το μήνυμά σας εδώ..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer d-flex justify-content-between">
+                        <a href="{{ url_for('messages_inbox') }}" class="btn btn-secondary">
+                            <i class="fas fa-times mr-2"></i>Ακύρωση
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-paper-plane mr-2"></i>Αποστολή
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const recipientCheckboxes = document.querySelectorAll('.recipient-checkbox');
+    const currentUserRole = '{{ current_user.role }}';
+    
+    // Επιλογή όλων (μόνο για admin/poweruser)
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            recipientCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+    
+    // Περιορισμός επιλογής για officer
+    if (currentUserRole === 'officer') {
+        recipientCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    // Αποεπιλογή όλων των άλλων
+                    recipientCheckboxes.forEach(otherCheckbox => {
+                        if (otherCheckbox !== this) {
+                            otherCheckbox.checked = false;
+                        }
+                    });
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}
