@@ -26,7 +26,7 @@ if DATABASE_URI:
     print("Using PostgreSQL database (Production)")
 else:
     # Development: SQLite
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///municipal_police_v2.db'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///municipal_police_v3.db'
     print("Using SQLite database (Development)")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -35,40 +35,10 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 db = SQLAlchemy(app)
 
-# ======================== DATABASE INITIALIZATION ========================
-def initialize_database():
-    """Αρχικοποίηση βάσης δεδομένων για production"""
-    try:
-        with app.app_context():
-            # Δημιουργία όλων των πινάκων
-            db.create_all()
-            print("Database tables created successfully")
-            
-            # Δημιουργία default admin μόνο αν δεν υπάρχει
-            if not User.query.filter_by(username='admin').first():
-                create_default_admin()
-                print("Default admin user created")
-            
-            # Δημιουργία default dynamic fields μόνο αν δεν υπάρχουν
-            if not DynamicField.query.first():
-                create_default_dynamic_fields()
-                print("Default dynamic fields created")
-                
-            db.session.commit()
-            print("Database initialization completed successfully")
-            
-    except Exception as e:
-        print(f"Database initialization error: {e}")
-        # In case of error, try to rollback
-        try:
-            db.session.rollback()
-        except:
-            pass
-
 # ======================== DATABASE MODELS ========================
 
 class User(db.Model):
-    """Πίνακας Χρηστών (Δημοτικοί Αστυνομικοί + Admin)"""
+    """Πίνακας Χρηστών (Δημοτικοί Αστυνομικοί + Admin + PowerUser)"""
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
@@ -76,12 +46,14 @@ class User(db.Model):
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
     rank = db.Column(db.String(50), nullable=False)  # Βαθμός
-    role = db.Column(db.String(20), nullable=False, default='officer')  # 'admin' or 'officer'
+    role = db.Column(db.String(20), nullable=False, default='officer')  # 'admin', 'poweruser', 'officer'
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Σχέση με παραβάσεις
+    # Σχέσεις
     violations = db.relationship('Violation', backref='officer', lazy=True)
+    sent_messages = db.relationship('Message', foreign_keys='Message.sender_id', backref='sender', lazy=True)
+    received_messages = db.relationship('MessageRecipient', backref='recipient_user', lazy=True)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -92,6 +64,52 @@ class User(db.Model):
     @property
     def full_name(self):
         return f"{self.rank} {self.first_name} {self.last_name}"
+    
+    @property
+    def role_display(self):
+        """Εμφάνιση ρόλου στα ελληνικά"""
+        role_map = {
+            'admin': 'Διαχειριστής',
+            'poweruser': 'Επόπτης',
+            'officer': 'Αστυνομικός'
+        }
+        return role_map.get(self.role, self.role)
+    
+    def can_manage_users(self):
+        """Έλεγχος αν μπορεί να διαχειρίζεται χρήστες"""
+        return self.role == 'admin'
+    
+    def can_edit_violations(self):
+        """Έλεγχος αν μπορεί να επεξεργάζεται παραβάσεις"""
+        return self.role == 'admin'
+    
+    def can_view_admin_dashboard(self):
+        """Έλεγχος αν μπορεί να βλέπει admin dashboard"""
+        return self.role in ['admin', 'poweruser']
+    
+    def can_send_mass_messages(self):
+        """Έλεγχος αν μπορεί να στέλνει μαζικά μηνύματα"""
+        return self.role in ['admin', 'poweruser']
+
+class Message(db.Model):
+    """Πίνακας Μηνυμάτων"""
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    subject = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_mass_message = db.Column(db.Boolean, default=False)  # Για μαζικά μηνύματα
+    
+    # Σχέσεις
+    recipients = db.relationship('MessageRecipient', backref='message', lazy=True, cascade='all, delete-orphan')
+
+class MessageRecipient(db.Model):
+    """Πίνακας Παραληπτών Μηνυμάτων"""
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('message.id'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    read_at = db.Column(db.DateTime, nullable=True)
 
 class DynamicField(db.Model):
     """Πίνακας Δυναμικών Πεδίων (χρώματα, τύποι οχημάτων)"""
@@ -134,7 +152,7 @@ class Violation(db.Model):
     driver_afm = db.Column(db.String(20), nullable=True)
     driver_signature = db.Column(db.Text, nullable=True)  # Base64 encoded signature
     
-    # ΝΕΑ ΠΕΔΙΑ: Προστίμα και Άρθρα (προστέθηκαν μετά το migration)
+    # Προστίμα και Άρθρα
     violation_articles = db.Column(db.Text, nullable=True)  # JSON string με άρθρα
     total_fine_amount = db.Column(db.Numeric(8,2), nullable=True)  # Συνολικό ποσό προστίμου
     fine_breakdown = db.Column(db.Text, nullable=True)  # JSON string με ανάλυση προστίμων
@@ -193,7 +211,22 @@ def admin_required(f):
         user = User.query.get(session['user_id'])
         if not user or user.role != 'admin':
             flash('Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_or_poweruser_required(f):
+    """Decorator που επιτρέπει την πρόσβαση σε admin ή poweruser"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Παρακαλώ συνδεθείτε για να συνεχίσετε.', 'warning')
+            return redirect(url_for('login'))
+        
+        user = User.query.get(session['user_id'])
+        if not user or user.role not in ['admin', 'poweruser']:
+            flash('Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.', 'error')
+            return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -260,7 +293,16 @@ def get_current_user():
 @app.context_processor
 def inject_user():
     """Κάνει διαθέσιμη τη μεταβλητή current_user σε όλα τα templates"""
-    return dict(current_user=get_current_user())
+    current_user = get_current_user()
+    # Υπολογισμός αριθμού μη αναγνωσμένων μηνυμάτων
+    unread_count = 0
+    if current_user:
+        unread_count = MessageRecipient.query.filter_by(
+            recipient_id=current_user.id,
+            is_read=False
+        ).count()
+    
+    return dict(current_user=current_user, unread_messages_count=unread_count)
 
 def save_uploaded_file(file):
     """Αποθήκευση φωτογραφίας"""
@@ -313,11 +355,8 @@ def login():
             
             flash(f'Καλώς ήρθατε, {user.full_name}!', 'success')
             
-            # Redirect based on role
-            if user.role == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            else:
-                return redirect(url_for('index'))
+            # Όλοι οι χρήστες πηγαίνουν στο κεντρικό dashboard
+            return redirect(url_for('dashboard'))
         else:
             flash('Λάθος στοιχεία σύνδεσης.', 'error')
     
@@ -329,27 +368,179 @@ def logout():
     flash('Αποσυνδεθήκατε επιτυχώς.', 'info')
     return redirect(url_for('login'))
 
-# ======================== MAIN APPLICATION ROUTES ========================
+# ======================== CENTRAL DASHBOARD ========================
 
 @app.route('/')
 @login_required
-def index():
-    """Κεντρική σελίδα - Φόρμα καταχώρησης παράβασης"""
+def dashboard():
+    """Κεντρικό Dashboard - Μενού μετά το login"""
+    current_user = get_current_user()
+    return render_template('dashboard/central_menu.html', current_user=current_user)
+
+# ======================== MODULE ROUTES ========================
+
+@app.route('/kok')
+@login_required
+def kok_module():
+    """Φόρμα καταχώρησης παράβασης ΚΟΚ"""
     violations_list = load_violations()
     
     # Φόρτωση δυναμικών πεδίων
     vehicle_colors = DynamicField.query.filter_by(field_type='vehicle_color', is_active=True).all()
     vehicle_types = DynamicField.query.filter_by(field_type='vehicle_type', is_active=True).all()
     
-    # Φόρτωση current user για το template
     current_user = get_current_user()
     
-    return render_template('index.html', 
+    return render_template('modules/kok.html', 
                          violations=violations_list,
                          vehicle_colors=vehicle_colors,
                          vehicle_types=vehicle_types,
                          current_user=current_user,
                          datetime=datetime)
+
+@app.route('/store_inspection')
+@login_required
+def store_inspection_module():
+    """Έλεγχος Καταστημάτων"""
+    return render_template('modules/store_inspection.html')
+
+@app.route('/document_service')
+@login_required
+def document_service_module():
+    """Επιδόσεις Εγγράφων"""
+    return render_template('modules/document_service.html')
+
+@app.route('/reports_complaints')
+@login_required
+def reports_complaints_module():
+    """Αναφορές/Καταγγελίες"""
+    return render_template('modules/reports_complaints.html')
+
+# ======================== MESSAGING SYSTEM ========================
+
+@app.route('/messages')
+@login_required
+def messages_inbox():
+    """Εισερχόμενα μηνύματα"""
+    current_user = get_current_user()
+    
+    # Λήψη μηνυμάτων του χρήστη
+    received_messages = db.session.query(Message, MessageRecipient).join(
+        MessageRecipient, Message.id == MessageRecipient.message_id
+    ).filter(
+        MessageRecipient.recipient_id == current_user.id
+    ).order_by(Message.created_at.desc()).all()
+    
+    return render_template('messages/inbox.html', messages=received_messages)
+
+@app.route('/messages/compose')
+@login_required
+def compose_message():
+    """Σύνθεση νέου μηνύματος"""
+    current_user = get_current_user()
+    
+    # Λήψη όλων των χρηστών εκτός από τον τρέχοντα
+    users = User.query.filter(
+        User.id != current_user.id,
+        User.is_active == True
+    ).order_by(User.first_name, User.last_name).all()
+    
+    return render_template('messages/compose.html', users=users, current_user=current_user)
+
+@app.route('/messages/send', methods=['POST'])
+@login_required
+def send_message():
+    """Αποστολή μηνύματος"""
+    try:
+        current_user = get_current_user()
+        
+        subject = request.form.get('subject')
+        content = request.form.get('content')
+        recipient_ids = request.form.getlist('recipients')
+        
+        if not subject or not content:
+            flash('Παρακαλώ συμπληρώστε θέμα και περιεχόμενο του μηνύματος.', 'error')
+            return redirect(url_for('compose_message'))
+        
+        if not recipient_ids:
+            flash('Παρακαλώ επιλέξτε τουλάχιστον έναν παραλήπτη.', 'error')
+            return redirect(url_for('compose_message'))
+        
+        # Δημιουργία μηνύματος
+        is_mass = len(recipient_ids) > 1
+        message = Message(
+            sender_id=current_user.id,
+            subject=subject,
+            content=content,
+            is_mass_message=is_mass
+        )
+        
+        db.session.add(message)
+        db.session.flush()  # Για να πάρουμε το ID
+        
+        # Προσθήκη παραληπτών
+        for recipient_id in recipient_ids:
+            recipient = MessageRecipient(
+                message_id=message.id,
+                recipient_id=int(recipient_id)
+            )
+            db.session.add(recipient)
+        
+        db.session.commit()
+        
+        if is_mass:
+            flash(f'Το μήνυμα στάλθηκε επιτυχώς σε {len(recipient_ids)} παραλήπτες!', 'success')
+        else:
+            flash('Το μήνυμα στάλθηκε επιτυχώς!', 'success')
+        
+        return redirect(url_for('messages_inbox'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Σφάλμα κατά την αποστολή: {str(e)}', 'error')
+        return redirect(url_for('compose_message'))
+
+@app.route('/messages/<int:message_id>')
+@login_required
+def view_message(message_id):
+    """Προβολή μηνύματος"""
+    current_user = get_current_user()
+    
+    # Έλεγχος αν ο χρήστης έχει πρόσβαση στο μήνυμα
+    message_recipient = MessageRecipient.query.filter_by(
+        message_id=message_id,
+        recipient_id=current_user.id
+    ).first()
+    
+    if not message_recipient:
+        flash('Δεν έχετε πρόσβαση σε αυτό το μήνυμα.', 'error')
+        return redirect(url_for('messages_inbox'))
+    
+    # Σήμανση ως αναγνωσμένο
+    if not message_recipient.is_read:
+        message_recipient.is_read = True
+        message_recipient.read_at = datetime.utcnow()
+        db.session.commit()
+    
+    message = Message.query.get_or_404(message_id)
+    
+    return render_template('messages/view_message.html', 
+                         message=message, 
+                         message_recipient=message_recipient)
+
+@app.route('/messages/sent')
+@login_required
+def sent_messages():
+    """Απεσταλμένα μηνύματα"""
+    current_user = get_current_user()
+    
+    messages = Message.query.filter_by(sender_id=current_user.id).order_by(
+        Message.created_at.desc()
+    ).all()
+    
+    return render_template('messages/sent.html', messages=messages)
+
+# ======================== VIOLATION ROUTES ========================
 
 @app.route('/submit', methods=['POST'])
 @login_required
@@ -396,7 +587,7 @@ def submit_violation():
                 )
                 db.session.add(new_type)
         
-        # Ημερομηνία και ώρα παράβασης (με έλεγχο για None και κενά strings)
+        # Ημερομηνία και ώρα παράβασης
         violation_date_str = request.form.get('violation_date')
         violation_time_str = request.form.get('violation_time')
         
@@ -409,6 +600,7 @@ def submit_violation():
             violation_time = datetime.now().time()
         else:
             violation_time = datetime.strptime(violation_time_str.strip(), '%H:%M').time()
+        
         street = request.form.get('street')
         street_number = request.form.get('street_number')
         
@@ -464,7 +656,7 @@ def submit_violation():
             # Validation μόνο αν είναι παρών ο οδηγός
             if not all([driver_last_name, driver_first_name, driver_father_name, driver_afm]):
                 flash('Παρακαλώ συμπληρώστε όλα τα στοιχεία του οδηγού.', 'error')
-                return redirect(url_for('index'))
+                return redirect(url_for('kok_module'))
         else:
             driver_last_name = None
             driver_first_name = None
@@ -507,12 +699,12 @@ def submit_violation():
         db.session.commit()
         
         flash(f'Η παράβαση καταχωρήθηκε επιτυχώς! Πρόστιμο: {fine_calculation["total_fine"]:.2f}€', 'success')
-        return redirect(url_for('index'))
+        return redirect(url_for('kok_module'))
         
     except Exception as e:
         db.session.rollback()
         flash(f'Σφάλμα κατά την καταχώρηση: {str(e)}', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('kok_module'))
 
 @app.route('/violations')
 @login_required
@@ -521,11 +713,11 @@ def view_violations():
     page = request.args.get('page', 1, type=int)
     per_page = 20
     
-    # Αν είναι admin, βλέπει όλες τις παραβάσεις
+    # Αν είναι admin ή poweruser, βλέπει όλες τις παραβάσεις
     # Αν είναι officer, βλέπει μόνο τις δικές του
     current_user = get_current_user()
     
-    if current_user.role == 'admin':
+    if current_user.can_view_admin_dashboard():
         violations = Violation.query.order_by(Violation.created_at.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
@@ -544,7 +736,7 @@ def view_violation(violation_id):
     
     # Έλεγχος δικαιωμάτων
     current_user = get_current_user()
-    if current_user.role != 'admin' and violation.officer_id != current_user.id:
+    if not current_user.can_view_admin_dashboard() and violation.officer_id != current_user.id:
         flash('Δεν έχετε δικαίωμα προβολής αυτής της παράβασης.', 'error')
         return redirect(url_for('view_violations'))
     
@@ -559,11 +751,10 @@ def view_violation(violation_id):
 # ======================== ADMIN ROUTES ========================
 
 @app.route('/admin')
-@admin_required
+@admin_or_poweruser_required
 def admin_dashboard():
-    """Admin Dashboard"""
+    """Admin/PowerUser Dashboard"""
     try:
-        # Παίρνουμε τον τρέχοντα χρήστη
         current_user = User.query.get(session['user_id'])
         
         # Στατιστικά με try-except για ασφάλεια
@@ -609,19 +800,19 @@ def admin_dashboard():
                              recent_violations=recent_violations)
     except Exception as e:
         flash(f'Σφάλμα φόρτωσης dashboard: {str(e)}', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
 
 @app.route('/admin/users')
-@admin_required
+@admin_required  # Μόνο admin μπορεί να διαχειρίζεται χρήστες
 def admin_users():
-    """Διαχείριση Χρηστών"""
+    """Διαχείριση Χρηστών - Μόνο Admin"""
     users = User.query.order_by(User.created_at.desc()).all()
     return render_template('admin/users.html', users=users)
 
 @app.route('/admin/users/add', methods=['GET', 'POST'])
-@admin_required
+@admin_required  # Μόνο admin μπορεί να προσθέτει χρήστες
 def admin_add_user():
-    """Προσθήκη νέου χρήστη"""
+    """Προσθήκη νέου χρήστη - Μόνο Admin"""
     if request.method == 'POST':
         try:
             username = request.form.get('username')
@@ -665,9 +856,9 @@ def admin_add_user():
     return render_template('admin/add_user.html')
 
 @app.route('/admin/violations')
-@admin_required
+@admin_or_poweruser_required
 def admin_violations():
-    """Admin - Όλες οι παραβάσεις"""
+    """Admin/PowerUser - Όλες οι παραβάσεις"""
     page = request.args.get('page', 1, type=int)
     per_page = 50
     
@@ -678,9 +869,9 @@ def admin_violations():
     return render_template('admin/violations.html', violations=violations)
 
 @app.route('/admin/violation/<int:violation_id>/edit', methods=['GET', 'POST'])
-@admin_required
+@admin_required  # Μόνο admin μπορεί να επεξεργάζεται παραβάσεις
 def admin_edit_violation(violation_id):
-    """Admin - Επεξεργασία παράβασης"""
+    """Admin - Επεξεργασία παράβασης - Μόνο Admin"""
     violation = Violation.query.get_or_404(violation_id)
     
     if request.method == 'POST':
@@ -691,7 +882,7 @@ def admin_edit_violation(violation_id):
             violation.vehicle_color = request.form.get('vehicle_color')
             violation.vehicle_type = request.form.get('vehicle_type')
             
-            # Ημερομηνία και ώρα παράβασης (με έλεγχο για None και κενά strings)
+            # Ημερομηνία και ώρα παράβασης
             violation_date_str = request.form.get('violation_date')
             violation_time_str = request.form.get('violation_time')
             
@@ -710,7 +901,7 @@ def admin_edit_violation(violation_id):
             violation.license_removed = 'license_removed' in request.form
             violation.registration_removed = 'registration_removed' in request.form
             
-            # Στοιχεία οδηγού (μόνο αν είναι παρών)
+            # Στοιχεία οδηγού
             driver_present = 'driver_present' in request.form
             
             if driver_present:
@@ -752,15 +943,15 @@ def admin_edit_violation(violation_id):
                          vehicle_types=vehicle_types)
 
 @app.route('/admin/reports')
-@admin_required
+@admin_or_poweruser_required
 def admin_reports():
-    """Admin - Αναφορές και Στατιστικά"""
+    """Admin/PowerUser - Αναφορές και Στατιστικά"""
     return render_template('admin/reports.html')
 
 @app.route('/admin/reports/generate', methods=['POST'])
-@admin_required
+@admin_or_poweruser_required
 def admin_generate_report():
-    """Admin - Δημιουργία Αναφοράς"""
+    """Admin/PowerUser - Δημιουργία Αναφοράς"""
     report_type = request.form.get('report_type')
     start_date = request.form.get('start_date')
     end_date = request.form.get('end_date')
@@ -834,7 +1025,7 @@ def api_get_dynamic_fields(field_type):
     return jsonify([{'id': f.id, 'value': f.value} for f in fields])
 
 @app.route('/api/officers')
-@admin_required
+@admin_or_poweruser_required
 def api_get_officers():
     """API για λήψη αστυνομικών για reports"""
     officers = User.query.filter_by(role='officer', is_active=True).all()
@@ -890,6 +1081,35 @@ def create_default_dynamic_fields():
             db.session.add(field)
     
     db.session.commit()
+
+def initialize_database():
+    """Αρχικοποίηση βάσης δεδομένων για production"""
+    try:
+        with app.app_context():
+            # Δημιουργία όλων των πινάκων
+            db.create_all()
+            print("Database tables created successfully")
+            
+            # Δημιουργία default admin μόνο αν δεν υπάρχει
+            if not User.query.filter_by(username='admin').first():
+                create_default_admin()
+                print("Default admin user created")
+            
+            # Δημιουργία default dynamic fields μόνο αν δεν υπάρχουν
+            if not DynamicField.query.first():
+                create_default_dynamic_fields()
+                print("Default dynamic fields created")
+                
+            db.session.commit()
+            print("Database initialization completed successfully")
+            
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+        # In case of error, try to rollback
+        try:
+            db.session.rollback()
+        except:
+            pass
 
 # ======================== LAZY DATABASE INITIALIZATION ========================
 _db_initialized = False
