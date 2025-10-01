@@ -217,6 +217,43 @@ class Violation(db.Model):
             return f"{float(self.total_fine_amount):.2f}€"
         return "0.00€"
 
+class Notification(db.Model):
+    """Πίνακας Ειδοποιήσεων"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    type = db.Column(db.String(20), default='info')  # 'info', 'warning', 'error', 'success'
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Σχέσεις
+    user = db.relationship('User', backref='notifications', lazy=True)
+    
+    @property
+    def icon(self):
+        """Επιστρέφει το κατάλληλο icon για τον τύπο ειδοποίησης"""
+        icons = {
+            'info': 'fas fa-info-circle',
+            'warning': 'fas fa-exclamation-triangle',
+            'error': 'fas fa-times-circle',
+            'success': 'fas fa-check-circle',
+            'message': 'fas fa-envelope'
+        }
+        return icons.get(self.type, 'fas fa-bell')
+    
+    @property
+    def css_class(self):
+        """Επιστρέφει την κατάλληλη CSS κλάση για τον τύπο ειδοποίησης"""
+        classes = {
+            'info': 'alert-info',
+            'warning': 'alert-warning', 
+            'error': 'alert-danger',
+            'success': 'alert-success',
+            'message': 'alert-primary'
+        }
+        return classes.get(self.type, 'alert-info')
+
 # ======================== MIGRATION FUNCTIONALITY ========================
 
 def database_migration():
@@ -485,6 +522,79 @@ def logout():
     session.clear()
     flash('Αποσυνδεθήκατε επιτυχώς.', 'info')
     return redirect(url_for('login'))
+
+# ======================== NOTIFICATION ROUTES ========================
+
+@app.route('/api/notifications')
+@login_required
+def get_notifications():
+    """API endpoint για λήψη ειδοποιήσεων"""
+    user_id = session['user_id']
+    
+    # Λήψη μη αναγνωσμένων ειδοποιήσεων
+    notifications = Notification.query.filter_by(user_id=user_id)\
+        .order_by(Notification.created_at.desc())\
+        .limit(10).all()
+    
+    unread_count = Notification.query.filter_by(user_id=user_id, is_read=False).count()
+    
+    notifications_data = []
+    for notification in notifications:
+        notifications_data.append({
+            'id': notification.id,
+            'title': notification.title,
+            'message': notification.message,
+            'type': notification.type,
+            'is_read': notification.is_read,
+            'created_at': notification.created_at.isoformat(),
+            'icon': notification.icon
+        })
+    
+    return jsonify({
+        'notifications': notifications_data,
+        'unread_count': unread_count
+    })
+
+@app.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    """Σήμανση ειδοποίησης ως αναγνωσμένη"""
+    user_id = session['user_id']
+    
+    notification = Notification.query.filter_by(id=notification_id, user_id=user_id).first()
+    if notification:
+        notification.is_read = True
+        db.session.commit()
+        return jsonify({'success': True})
+    
+    return jsonify({'success': False, 'error': 'Η ειδοποίηση δεν βρέθηκε'})
+
+@app.route('/api/notifications/read-all', methods=['POST'])
+@login_required
+def mark_all_notifications_read():
+    """Σήμανση όλων των ειδοποιήσεων ως αναγνωσμένες"""
+    user_id = session['user_id']
+    
+    notifications = Notification.query.filter_by(user_id=user_id, is_read=False).all()
+    for notification in notifications:
+        notification.is_read = True
+    
+    db.session.commit()
+    return jsonify({'success': True})
+
+def create_notification(user_id, title, message, notification_type='info'):
+    """Helper function για δημιουργία ειδοποίησης"""
+    notification = Notification(
+        user_id=user_id,
+        title=title,
+        message=message,
+        type=notification_type
+    )
+    db.session.add(notification)
+    db.session.commit()
+    return notification
+
+# ======================== MAIN ROUTES ========================
 
 @app.route('/dashboard')
 @login_required
@@ -945,6 +1055,121 @@ def violations_stats():
         flash(f'Σφάλμα στη φόρτωση στατιστικών: {str(e)}', 'error')
         return redirect(url_for('dashboard'))
 
+@app.route('/edit_violation/<int:violation_id>')
+@login_required
+def edit_violation(violation_id):
+    """Φόρμα επεξεργασίας παράβασης - μόνο για admin"""
+    user = User.query.get(session['user_id'])
+    
+    # Έλεγχος αν ο χρήστης μπορεί να επεξεργαστεί παραβάσεις
+    if not user.can_manage_users():
+        flash('Δεν έχετε δικαίωμα επεξεργασίας παραβάσεων.', 'error')
+        return redirect(url_for('view_violations'))
+    
+    # Λήψη παράβασης
+    violation = Violation.query.get_or_404(violation_id)
+    
+    # Λήψη διαθέσιμων χρωμάτων και τύπων οχημάτων
+    vehicle_colors = DynamicField.query.filter_by(field_type='vehicle_color', is_active=True).all()
+    vehicle_types = DynamicField.query.filter_by(field_type='vehicle_type', is_active=True).all()
+    
+    # Λήψη παραβάσεων από πίνακα violations_data
+    try:
+        violations = ViolationsData.query.filter_by(is_active=True).all()
+    except:
+        violations = []
+    
+    return render_template('edit_violation.html', 
+                         violation=violation,
+                         vehicle_colors=vehicle_colors,
+                         vehicle_types=vehicle_types, 
+                         violations=violations,
+                         current_user=user,
+                         datetime=datetime)
+
+@app.route('/update_violation/<int:violation_id>', methods=['POST'])
+@login_required
+def update_violation(violation_id):
+    """Ενημέρωση παράβασης - μόνο για admin"""
+    user = User.query.get(session['user_id'])
+    
+    # Έλεγχος αν ο χρήστης μπορεί να επεξεργαστεί παραβάσεις
+    if not user.can_manage_users():
+        flash('Δεν έχετε δικαίωμα επεξεργασίας παραβάσεων.', 'error')
+        return redirect(url_for('view_violations'))
+    
+    try:
+        # Λήψη παράβασης
+        violation = Violation.query.get_or_404(violation_id)
+        
+        # Λήψη δεδομένων από φόρμα
+        license_plate = request.form['license_plate'].strip().upper()
+        vehicle_brand = request.form['vehicle_brand'].strip()
+        vehicle_color = request.form['vehicle_color'].strip()
+        vehicle_type = request.form['vehicle_type'].strip()
+        
+        # Επεξεργασία custom πεδίων
+        if vehicle_color == 'custom':
+            vehicle_color = request.form['custom_vehicle_color'].strip()
+            # Προσθήκη στη βάση δυναμικών πεδίων
+            new_color = DynamicField(
+                field_type='vehicle_color',
+                value=vehicle_color,
+                created_by=session['user_id']
+            )
+            db.session.add(new_color)
+        
+        if vehicle_type == 'custom':
+            vehicle_type = request.form['custom_vehicle_type'].strip()
+            # Προσθήκη στη βάση δυναμικών πεδίων  
+            new_type = DynamicField(
+                field_type='vehicle_type',
+                value=vehicle_type,
+                created_by=session['user_id']
+            )
+            db.session.add(new_type)
+        
+        # Στοιχεία παράβασης
+        violation_date = datetime.strptime(request.form['violation_date'], '%Y-%m-%d').date()
+        violation_time = datetime.strptime(request.form['violation_time'], '%H:%M').time()
+        street = request.form['street'].strip()
+        street_number = request.form['street_number'].strip()
+        
+        # Επιλεγμένες παραβάσεις
+        selected_violations = request.form.getlist('violations')
+        if not selected_violations:
+            flash('Πρέπει να επιλέξετε τουλάχιστον μία παράβαση.', 'error')
+            return redirect(url_for('edit_violation', violation_id=violation_id))
+        
+        # Επιτόπια μέτρα
+        plates_removed = 'plates_removed' in request.form
+        license_removed = 'license_removed' in request.form  
+        registration_removed = 'registration_removed' in request.form
+        
+        # Ενημέρωση παράβασης
+        violation.license_plate = license_plate
+        violation.vehicle_brand = vehicle_brand
+        violation.vehicle_color = vehicle_color
+        violation.vehicle_type = vehicle_type
+        violation.violation_date = violation_date
+        violation.violation_time = violation_time
+        violation.street = street
+        violation.street_number = street_number
+        violation.selected_violations = json.dumps(selected_violations)
+        violation.plates_removed = plates_removed
+        violation.license_removed = license_removed
+        violation.registration_removed = registration_removed
+        violation.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        flash('Η παράβαση ενημερώθηκε επιτυχώς!', 'success')
+        return redirect(url_for('view_violations'))
+        
+    except Exception as e:
+        flash(f'Σφάλμα κατά την ενημέρωση: {str(e)}', 'error')
+        return redirect(url_for('edit_violation', violation_id=violation_id))
+
 @app.route('/submit_violation', methods=['POST'])
 @login_required
 def submit_violation():
@@ -1013,6 +1238,31 @@ def submit_violation():
         
         db.session.add(violation)
         db.session.commit()
+        
+        # Δημιουργία notification για τον χρήστη
+        user = User.query.get(session['user_id'])
+        create_notification(
+            user_id=session['user_id'],
+            title="Νέα Παράβαση Καταχωρήθηκε",
+            message=f"Η παράβαση για το όχημα {license_plate} καταχωρήθηκε επιτυχώς στη διεύθυνση {street} {street_number}.",
+            notification_type="success"
+        )
+        
+        # Αν είναι admin ή poweruser, ενημέρωση και άλλων admins
+        if user.role in ['admin', 'poweruser']:
+            other_admins = User.query.filter(
+                User.role.in_(['admin', 'poweruser']),
+                User.id != session['user_id'],
+                User.is_active == True
+            ).all()
+            
+            for admin in other_admins:
+                create_notification(
+                    user_id=admin.id,
+                    title="Νέα Παράβαση από Συνάδελφο",
+                    message=f"Ο/Η {user.full_name} κατέγραψε νέα παράβαση για το όχημα {license_plate}.",
+                    notification_type="info"
+                )
         
         flash('Η παράβαση καταχωρήθηκε επιτυχώς!', 'success')
         return redirect(url_for('view_violations'))
