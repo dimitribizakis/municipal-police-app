@@ -72,8 +72,15 @@
                             <label for="license_plate" class="form-label">
                                 <i class="fas fa-tag me-1"></i>Αριθμός Κυκλοφορίας *
                             </label>
-                            <input type="text" class="form-control" id="license_plate" name="license_plate" 
-                                   placeholder="π.χ. ABC-1234" required>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="license_plate" name="license_plate" 
+                                       placeholder="π.χ. ABC-1234" required>
+                                <button type="button" class="btn btn-outline-primary" id="search_plate_btn" onclick="searchLicensePlate()">
+                                    <i class="fas fa-search me-1"></i>Αναζήτηση
+                                </button>
+                            </div>
+                            <small class="text-muted">Αναζητήστε την πινακίδα για αυτόματη συμπλήρωση των στοιχείων</small>
+                            <div id="plate_search_result" class="mt-2"></div>
                         </div>
                         
                         <div class="col-md-6 mb-3">
@@ -916,5 +923,114 @@
 
         console.log('Initialization complete');
     });
+
+    // Αναζήτηση πινακίδας για αυτόματη συμπλήρωση
+    function searchLicensePlate() {
+        const plateInput = document.getElementById('license_plate');
+        const licensePlate = plateInput.value.trim().toUpperCase();
+        const resultDiv = document.getElementById('plate_search_result');
+        const searchBtn = document.getElementById('search_plate_btn');
+        
+        if (!licensePlate) {
+            showAlert('Παρακαλώ εισάγετε αριθμό κυκλοφορίας', 'warning');
+            return;
+        }
+        
+        // Show loading state
+        searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Αναζήτηση...';
+        searchBtn.disabled = true;
+        resultDiv.innerHTML = '';
+        
+        // Make AJAX request
+        fetch('/api/search_license_plate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                license_plate: licensePlate
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.found) {
+                    // Auto-fill the form fields
+                    document.getElementById('vehicle_brand').value = data.data.vehicle_brand;
+                    document.getElementById('vehicle_color').value = data.data.vehicle_color;
+                    document.getElementById('vehicle_type').value = data.data.vehicle_type;
+                    
+                    // Show success message
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success alert-sm py-2">
+                            <i class="fas fa-check-circle me-1"></i>
+                            ${data.message}
+                        </div>
+                    `;
+                    
+                    // Highlight the filled fields
+                    ['vehicle_brand', 'vehicle_color', 'vehicle_type'].forEach(fieldId => {
+                        const field = document.getElementById(fieldId);
+                        field.classList.add('border-success');
+                        setTimeout(() => {
+                            field.classList.remove('border-success');
+                        }, 3000);
+                    });
+                } else {
+                    // No results found
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-info alert-sm py-2">
+                            <i class="fas fa-info-circle me-1"></i>
+                            ${data.message}
+                        </div>
+                    `;
+                }
+            } else {
+                // Error occurred
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger alert-sm py-2">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        ${data.message}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger alert-sm py-2">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Σφάλμα κατά την αναζήτηση
+                </div>
+            `;
+        })
+        .finally(() => {
+            // Reset button state
+            searchBtn.innerHTML = '<i class="fas fa-search me-1"></i>Αναζήτηση';
+            searchBtn.disabled = false;
+            
+            // Auto-hide result after 5 seconds
+            setTimeout(() => {
+                if (resultDiv.innerHTML) {
+                    resultDiv.innerHTML = '';
+                }
+            }, 5000);
+        });
+    }
+
+    // Helper function to show alerts
+    function showAlert(message, type = 'info') {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show mt-3" role="alert">
+                <i class="fas fa-${type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        // Insert at the top of the form
+        const form = document.querySelector('form');
+        form.insertAdjacentHTML('afterbegin', alertHtml);
+    }
 </script>
 {% endblock %}
