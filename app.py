@@ -510,13 +510,29 @@ def dashboard():
     
     return render_template('dashboard/central_menu.html', user=user, stats=stats)
 
-@app.route('/index')
 @app.route('/new-violation')
 @login_required
 def new_violation():
     """Φόρμα δημιουργίας νέας παράβασης"""
     user = User.query.get(session['user_id'])
-    return render_template('index.html', user=user)
+    
+    # Λήψη διαθέσιμων χρωμάτων και τύπων οχημάτων
+    vehicle_colors = DynamicField.query.filter_by(field_type='vehicle_color', is_active=True).all()
+    vehicle_types = DynamicField.query.filter_by(field_type='vehicle_type', is_active=True).all()
+    
+    # Λήψη παραβάσεων από πίνακα violations_data (με safe query)
+    try:
+        violations = ViolationsData.query.filter_by(is_active=True).all()
+    except:
+        # Αν δεν υπάρχει ο πίνακας ή δεν έχει δεδομένα, δημιουργούμε κενή λίστα
+        violations = []
+    
+    return render_template('index.html', 
+                         vehicle_colors=vehicle_colors,
+                         vehicle_types=vehicle_types, 
+                         violations=violations,
+                         current_user=user,
+                         datetime=datetime)
 
 @app.route('/search')
 @login_required 
@@ -828,63 +844,11 @@ def admin_reports():
 
 # ======================== MISSING ROUTES FIX ========================
 
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    """Dashboard redirect to index"""
-    return redirect(url_for('index'))
-
-@app.route('/index')
-@app.route('/')
-@login_required
-def index():
-    """Κεντρική σελίδα"""
-    user = User.query.get(session['user_id'])
-    
-    # Στατιστικά
-    my_violations = Violation.query.filter_by(officer_id=session['user_id']).count()
-    total_violations = Violation.query.count()
-    unread_messages = MessageRecipient.query.filter_by(
-        recipient_id=session['user_id'], 
-        is_read=False
-    ).count()
-    
-    stats = {
-        'my_violations': my_violations,
-        'total_violations': total_violations,
-        'unread_messages': unread_messages
-    }
-    
-    return render_template('dashboard/central_menu.html', user=user, stats=stats)
-
 @app.route('/violations/new', methods=['GET', 'POST'])
 @login_required
 def violations_new():
     """Νέα παράβαση"""
     return redirect(url_for('new_violation'))
-
-@app.route('/new-violation', methods=['GET', 'POST'])
-@login_required  
-def new_violation():
-    """Φόρμα νέας παράβασης"""
-    if request.method == 'POST':
-        return redirect(url_for('submit_violation'))
-    
-    # Λήψη διαθέσιμων χρωμάτων και τύπων οχημάτων
-    vehicle_colors = DynamicField.query.filter_by(field_type='vehicle_color', is_active=True).all()
-    vehicle_types = DynamicField.query.filter_by(field_type='vehicle_type', is_active=True).all()
-    
-    # Λήψη παραβάσεων από πίνακα violations_data
-    violations = ViolationsData.query.filter_by(is_active=True).all()
-    
-    current_user = User.query.get(session['user_id'])
-    
-    return render_template('index.html', 
-                         vehicle_colors=vehicle_colors,
-                         vehicle_types=vehicle_types, 
-                         violations=violations,
-                         current_user=current_user,
-                         datetime=datetime)
 
 @app.route('/violations/search')
 @login_required
