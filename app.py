@@ -1454,65 +1454,126 @@ def postgres_column_migration():
     """ΠΡΟΣΩΡΙΝΗ ROUTE ΓΙΑ MIGRATION - ΘΑ ΑΦΑΙΡΕΘΕΙ ΜΕΤΑ"""
     if request.method == 'POST':
         try:
-            from sqlalchemy import text
+            from sqlalchemy import text, inspect
             
-            print("🔄 Starting PostgreSQL migration...")
+            print("🔄 Starting PostgreSQL setup...")
             
-            commands = [
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS article TEXT',
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS article_paragraph TEXT',
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS remove_circulation_elements BOOLEAN DEFAULT FALSE',
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS circulation_removal_days INTEGER DEFAULT 0',
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS remove_circulation_license BOOLEAN DEFAULT FALSE',
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS circulation_license_removal_days INTEGER DEFAULT 0',
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS remove_driving_license BOOLEAN DEFAULT FALSE',
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS driving_license_removal_days INTEGER DEFAULT 0',
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS half_fine_motorcycles BOOLEAN DEFAULT FALSE',
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS parking_special_provision BOOLEAN DEFAULT FALSE',
-                'ALTER TABLE violations_data ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE'
-            ]
+            # Έλεγχος αν υπάρχει ο πίνακας violations_data
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
             
-            results = []
-            success_count = 0
+            if 'violations_data' not in tables:
+                print("📋 Creating violations_data table...")
+                
+                # Δημιουργία του πίνακα violations_data
+                create_table_sql = """
+                CREATE TABLE violations_data (
+                    id SERIAL PRIMARY KEY,
+                    description VARCHAR(200) NOT NULL,
+                    paragraph VARCHAR(100),
+                    article VARCHAR(20),
+                    article_paragraph VARCHAR(20),
+                    fine_cars NUMERIC(8,2) NOT NULL,
+                    fine_motorcycles NUMERIC(8,2),
+                    fine_trucks NUMERIC(8,2),
+                    half_fine_motorcycles BOOLEAN DEFAULT FALSE,
+                    remove_circulation_elements BOOLEAN DEFAULT FALSE,
+                    circulation_removal_days INTEGER,
+                    remove_circulation_license BOOLEAN DEFAULT FALSE,
+                    circulation_license_removal_days INTEGER,
+                    remove_driving_license BOOLEAN DEFAULT FALSE,
+                    driving_license_removal_days INTEGER,
+                    parking_special_provision BOOLEAN DEFAULT FALSE,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+                
+                db.session.execute(text(create_table_sql))
+                db.session.commit()
+                
+                return '''
+                ✅ <h2>Table Created Successfully!</h2>
+                <p>✅ Created violations_data table with all columns</p>
+                <p>🎉 Database is now ready to use!</p>
+                <br>
+                <a href="/admin/dashboard">← Back to Admin Dashboard</a>
+                '''
             
-            for cmd in commands:
-                try:
-                    db.session.execute(text(cmd))
-                    column_name = cmd.split()[4]
-                    results.append(f'✅ Added column: {column_name}')
-                    success_count += 1
-                except Exception as e:
-                    column_name = cmd.split()[4]
-                    results.append(f'⚠️ Column {column_name} already exists or error: {str(e)[:100]}...')
-            
-            db.session.commit()
-            results.append(f'🎉 Migration completed! Successfully added {success_count} columns')
-            
-            return '<br>'.join(results) + '<br><br><a href="/admin/dashboard">← Back to Admin Dashboard</a>'
+            else:
+                # Ο πίνακας υπάρχει, ας ελέγξουμε ποιες στήλες λείπουν
+                existing_columns = [col['name'] for col in inspector.get_columns('violations_data')]
+                
+                # Λίστα όλων των στηλών που πρέπει να υπάρχουν
+                required_columns = [
+                    'article', 'article_paragraph', 'remove_circulation_elements',
+                    'circulation_removal_days', 'remove_circulation_license', 
+                    'circulation_license_removal_days', 'remove_driving_license',
+                    'driving_license_removal_days', 'half_fine_motorcycles',
+                    'parking_special_provision', 'is_active'
+                ]
+                
+                missing_columns = [col for col in required_columns if col not in existing_columns]
+                
+                if not missing_columns:
+                    return '''
+                    ✅ <h2>All columns already exist!</h2>
+                    <p>🎉 No migration needed - database is up to date</p>
+                    <br>
+                    <a href="/admin/dashboard">← Back to Admin Dashboard</a>
+                    '''
+                
+                # Προσθήκη των στηλών που λείπουν
+                results = []
+                success_count = 0
+                
+                column_definitions = {
+                    'article': 'VARCHAR(20)',
+                    'article_paragraph': 'VARCHAR(20)',
+                    'remove_circulation_elements': 'BOOLEAN DEFAULT FALSE',
+                    'circulation_removal_days': 'INTEGER',
+                    'remove_circulation_license': 'BOOLEAN DEFAULT FALSE',
+                    'circulation_license_removal_days': 'INTEGER',
+                    'remove_driving_license': 'BOOLEAN DEFAULT FALSE', 
+                    'driving_license_removal_days': 'INTEGER',
+                    'half_fine_motorcycles': 'BOOLEAN DEFAULT FALSE',
+                    'parking_special_provision': 'BOOLEAN DEFAULT FALSE',
+                    'is_active': 'BOOLEAN DEFAULT TRUE'
+                }
+                
+                for column in missing_columns:
+                    try:
+                        cmd = f'ALTER TABLE violations_data ADD COLUMN {column} {column_definitions[column]}'
+                        db.session.execute(text(cmd))
+                        results.append(f'✅ Added column: {column}')
+                        success_count += 1
+                    except Exception as e:
+                        results.append(f'⚠️ Column {column} error: {str(e)[:100]}...')
+                
+                db.session.commit()
+                results.append(f'🎉 Migration completed! Successfully added {success_count} columns')
+                
+                return '<br>'.join(results) + '<br><br><a href="/admin/dashboard">← Back to Admin Dashboard</a>'
             
         except Exception as e:
             return f'❌ Migration failed: {str(e)}<br><br><a href="/admin/dashboard">← Back to Admin Dashboard</a>'
     
     return '''
     <div style="max-width: 600px; margin: 50px auto; padding: 20px; font-family: Arial;">
-        <h2>🚀 Database Migration</h2>
-        <p>This will add new columns to the violations_data table:</p>
+        <h2>🚀 Database Setup & Migration</h2>
+        <p><strong>This will check and set up your database:</strong></p>
         <ul>
-            <li>article (TEXT)</li>
-            <li>article_paragraph (TEXT)</li>
-            <li>remove_circulation_elements (BOOLEAN)</li>
-            <li>circulation_removal_days (INTEGER)</li>
-            <li>remove_circulation_license (BOOLEAN)</li>
-            <li>circulation_license_removal_days (INTEGER)</li>
-            <li>remove_driving_license (BOOLEAN)</li>
-            <li>driving_license_removal_days (INTEGER)</li>
-            <li>half_fine_motorcycles (BOOLEAN)</li>
-            <li>parking_special_provision (BOOLEAN)</li>
-            <li>is_active (BOOLEAN)</li>
+            <li>✅ Create violations_data table (if missing)</li>
+            <li>✅ Add missing columns (if needed)</li>
+            <li>✅ Set up proper PostgreSQL structure</li>
         </ul>
+        
+        <p><strong>Safe to run multiple times!</strong></p>
+        
         <form method="post">
-            <button type="submit" style="background-color: #dc3545; color: white; padding: 15px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
-                🚨 RUN MIGRATION NOW
+            <button type="submit" style="background-color: #28a745; color: white; padding: 15px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
+                🔧 SETUP DATABASE NOW
             </button>
         </form>
         <br>
