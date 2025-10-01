@@ -1,0 +1,920 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Καταχώρηση Παράβασης - Δημοτική Αστυνομία{% endblock %}
+
+{% block extra_css %}
+<style>
+.signature-pad {
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+.signature-pad:hover {
+    border-color: #007bff;
+}
+
+#signature-canvas {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: crosshair;
+    display: block;
+    margin: 0 auto;
+    background: white;
+    touch-action: none; /* Prevent scrolling on touch devices */
+}
+
+#signature-canvas:hover {
+    border-color: #007bff;
+}
+
+.signature-instructions {
+    color: #6c757d;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>Καταχώρηση Νέας Παράβασης
+                    </h4>
+                </div>
+                <div class="d-flex align-items-center">
+                    <small class="text-muted me-3">
+                        <i class="fas fa-user me-1"></i>Συνδεδεμένος ως: {{ current_user.first_name }} {{ current_user.last_name }}
+                    </small>
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-sign-out-alt me-1"></i>Αποσύνδεση
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('submit_violation') }}" onsubmit="return validateForm()">
+                    
+                    <!-- Στοιχεία Οχήματος -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-car me-2"></i>Στοιχεία Οχήματος
+                            </h5>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="license_plate" class="form-label">
+                                <i class="fas fa-tag me-1"></i>Αριθμός Κυκλοφορίας *
+                            </label>
+                            <input type="text" class="form-control" id="license_plate" name="license_plate" 
+                                   placeholder="π.χ. ABC-1234" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle_brand" class="form-label">
+                                <i class="fas fa-industry me-1"></i>Μάρκα Οχήματος *
+                            </label>
+                            <input type="text" class="form-control" id="vehicle_brand" name="vehicle_brand" 
+                                   placeholder="π.χ. Toyota, BMW" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle_color" class="form-label">
+                                <i class="fas fa-palette me-1"></i>Χρώμα Οχήματος *
+                            </label>
+                            <div class="dynamic-field-container">
+                                <select class="form-select" id="vehicle_color" name="vehicle_color" required>
+                                    <option value="">Επιλέξτε χρώμα...</option>
+                                    {% for color in vehicle_colors %}
+                                    <option value="{{ color.value }}">{{ color.value }}</option>
+                                    {% endfor %}
+                                    <option value="custom">+ Άλλο χρώμα...</option>
+                                </select>
+                                <div class="custom-input" id="custom_color_div">
+                                    <input type="text" class="form-control" id="custom_vehicle_color" 
+                                           name="custom_vehicle_color" placeholder="Εισάγετε νέο χρώμα">
+                                    <small class="text-muted">Το νέο χρώμα θα αποθηκευτεί για μελλοντική χρήση</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle_type" class="form-label">
+                                <i class="fas fa-car-side me-1"></i>Τύπος Οχήματος *
+                            </label>
+                            <div class="dynamic-field-container">
+                                <select class="form-select" id="vehicle_type" name="vehicle_type" required>
+                                    <option value="">Επιλέξτε τύπο...</option>
+                                    {% for type in vehicle_types %}
+                                    <option value="{{ type.value }}">{{ type.value }}</option>
+                                    {% endfor %}
+                                    <option value="custom">+ Άλλος τύπος...</option>
+                                </select>
+                                <div class="custom-input" id="custom_type_div">
+                                    <input type="text" class="form-control" id="custom_vehicle_type" 
+                                           name="custom_vehicle_type" placeholder="Εισάγετε νέο τύπο οχήματος">
+                                    <small class="text-muted">Ο νέος τύπος θα αποθηκευτεί για μελλοντική χρήση</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Στοιχεία Παράβασης -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Στοιχεία Παράβασης
+                            </h5>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="violation_date" class="form-label">
+                                <i class="fas fa-calendar me-1"></i>Ημερομηνία Παράβασης *
+                            </label>
+                            <input type="date" class="form-control" id="violation_date" name="violation_date" 
+                                   value="{{ datetime.now().strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="violation_time" class="form-label">
+                                <i class="fas fa-clock me-1"></i>Ώρα Παράβασης *
+                            </label>
+                            <input type="time" class="form-control" id="violation_time" name="violation_time" 
+                                   value="{{ datetime.now().strftime('%H:%M') }}" required>
+                        </div>
+                        
+                        <div class="col-md-8 mb-3">
+                            <label for="street" class="form-label">
+                                <i class="fas fa-road me-1"></i>Οδός *
+                            </label>
+                            <input type="text" class="form-control" id="street" name="street" 
+                                   placeholder="π.χ. Λεωφόρος Κηφισίας" required>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="street_number" class="form-label">
+                                <i class="fas fa-hashtag me-1"></i>Αριθμός *
+                            </label>
+                            <input type="text" class="form-control" id="street_number" name="street_number" 
+                                   placeholder="π.χ. 145" required>
+                        </div>
+                        
+                        <div class="col-12 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-list me-1"></i>Παραβάσεις *
+                            </label>
+                            <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                                {% for violation in violations %}
+                                <div class="form-check">
+                                    <input class="form-check-input violation-checkbox" type="checkbox" name="violations" 
+                                           value="{{ violation.id }}" id="violation_{{ loop.index }}"
+                                           data-fine="{{ violation.fine_cars }}">
+                                    <label class="form-check-label" for="violation_{{ loop.index }}">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>{{ violation.description }}</strong>
+                                                {% if violation.paragraph %}
+                                                <small class="text-primary d-block">{{ violation.paragraph }}</small>
+                                                {% endif %}
+                                            </div>
+                                            <span class="badge bg-danger ms-2">{{ violation.fine_cars }}€</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small class="text-muted">Επιλέξτε μία ή περισσότερες παραβάσεις</small>
+                                <div class="total-amount">
+                                    <strong>Σύνολο: <span id="totalAmount">0</span>€</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Επιτόπια Μέτρα -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-hands me-2"></i>Επιτόπια Μέτρα
+                            </h5>
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="plates_removed" 
+                                               id="plates_removed">
+                                        <label class="form-check-label" for="plates_removed">
+                                            <i class="fas fa-square me-1"></i>Αφαίρεση Πινακίδων
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="license_removed" 
+                                               id="license_removed">
+                                        <label class="form-check-label" for="license_removed">
+                                            <i class="fas fa-id-card me-1"></i>Αφαίρεση Άδειας Οδήγησης
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="registration_removed" 
+                                               id="registration_removed">
+                                        <label class="form-check-label" for="registration_removed">
+                                            <i class="fas fa-file-alt me-1"></i>Αφαίρεση Άδειας Κυκλοφορίας
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Φωτογραφία Οχήματος -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-camera me-2"></i>Φωτογραφία Οχήματος
+                            </h5>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="camera-container">
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-success me-2" id="start-camera-btn" 
+                                            onclick="startCamera()">
+                                        <i class="fas fa-camera me-1"></i>Άνοιγμα Κάμερας
+                                    </button>
+                                    <button type="button" class="btn btn-primary me-2" id="capture-btn" 
+                                            onclick="capturePhoto()" style="display: none;">
+                                        <i class="fas fa-capture me-1"></i>Λήψη Φωτογραφίας
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="stop-camera-btn" 
+                                            onclick="stopCamera()" style="display: none;">
+                                        <i class="fas fa-stop me-1"></i>Τερματισμός
+                                    </button>
+                                </div>
+                                
+                                <video id="camera-preview" autoplay playsinline></video>
+                                <canvas id="photo-canvas"></canvas>
+                                
+                                <div id="photo-status" class="mt-2"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="photo_file" class="form-label">
+                                    <i class="fas fa-upload me-1"></i>Ή ανεβάστε αρχείο
+                                </label>
+                                <input type="file" class="form-control" id="photo_file" name="photo_file" 
+                                       accept="image/*">
+                                <small class="text-muted">Μέγιστο μέγεθος: 5MB</small>
+                            </div>
+                            
+                            <img id="photo-preview" class="photo-preview" style="display: none;" 
+                                 alt="Προεπισκόπηση φωτογραφίας">
+                        </div>
+                        
+                        <!-- Hidden input for camera photo data -->
+                        <input type="hidden" id="photo_data" name="photo_data">
+                    </div>
+
+                    <!-- Παρουσία Οδηγού -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-user me-2"></i>Στοιχεία Οδηγού/Παραβάτη
+                            </h5>
+                        </div>
+                        
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="driver_present" name="driver_present" 
+                                       onchange="toggleDriverDetails()">
+                                <label class="form-check-label" for="driver_present">
+                                    <i class="fas fa-user-check me-1"></i>
+                                    Ο οδηγός/παραβάτης είναι παρών
+                                </label>
+                            </div>
+                            <small class="text-muted">Επιλέξτε μόνο αν ο οδηγός βρίσκεται επιτόπου</small>
+                        </div>
+                    </div>
+
+                    <!-- Στοιχεία Οδηγού (εμφανίζονται μόνο όταν είναι παρών) -->
+                    <div id="driver-details" style="display: none;">
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_last_name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Επώνυμο *
+                                </label>
+                                <input type="text" class="form-control" id="driver_last_name" name="driver_last_name" 
+                                       placeholder="Επώνυμο οδηγού">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_first_name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Όνομα *
+                                </label>
+                                <input type="text" class="form-control" id="driver_first_name" name="driver_first_name" 
+                                       placeholder="Όνομα οδηγού">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_father_name" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Όνομα Πατρός *
+                                </label>
+                                <input type="text" class="form-control" id="driver_father_name" name="driver_father_name" 
+                                       placeholder="Όνομα πατρός">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="driver_afm" class="form-label">
+                                    <i class="fas fa-hashtag me-1"></i>ΑΦΜ *
+                                </label>
+                                <input type="text" class="form-control" id="driver_afm" name="driver_afm" 
+                                       placeholder="Αριθμός Φορολογικού Μητρώου" maxlength="9">
+                            </div>
+                        </div>
+
+                        <!-- Υπογραφή -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary border-bottom pb-2">
+                                    <i class="fas fa-signature me-2"></i>Υπογραφή Οδηγού/Παραβάτη
+                                </h5>
+                            </div>
+                            
+                            <div class="col-12">
+                                <div class="signature-pad p-3 mb-3">
+                                    <canvas id="signature-canvas" width="600" height="200" 
+                                            style="width: 100%; height: 200px;"></canvas>
+                                    <div class="signature-instructions">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Σύρετε το ποντίκι ή το δάχτυλό σας για να υπογράψετε
+                                    </div>
+                                </div>
+                                
+                                <button type="button" class="btn btn-outline-secondary" onclick="clearSignature()">
+                                    <i class="fas fa-eraser me-1"></i>Καθαρισμός Υπογραφής
+                                </button>
+                                
+                                <button type="button" class="btn btn-outline-primary ms-2 d-md-none" onclick="openFullscreenSignature()">
+                                    <i class="fas fa-expand me-1"></i>Πλήρης Οθόνη
+                                </button>
+                                
+                                <input type="hidden" id="signature_data" name="signature_data">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Κουμπιά -->
+                    <div class="row">
+                        <div class="col-12 text-center">
+                            <button type="submit" class="btn btn-primary btn-lg me-3">
+                                <i class="fas fa-save me-2"></i>Καταχώρηση Παράβασης
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary btn-lg" onclick="clearSignature()">
+                                <i class="fas fa-undo me-2"></i>Καθαρισμός Φόρμας
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fullscreen Signature Modal for Mobile -->
+<div class="modal fade" id="fullscreenSignatureModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-signature me-2"></i>Υπογραφή Οδηγού/Παραβάτη
+                </h5>
+            </div>
+            <div class="modal-body d-flex flex-column">
+                <div class="flex-grow-1 d-flex align-items-center justify-content-center">
+                    <div class="w-100 h-100 position-relative">
+                        <canvas id="fullscreen-signature-canvas" 
+                                style="width: 100%; height: 100%; border: 2px dashed #007bff; border-radius: 8px; background: white;">
+                        </canvas>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Σύρετε το δάχτυλό σας για να υπογράψετε
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" onclick="clearFullscreenSignature()">
+                    <i class="fas fa-eraser me-1"></i>Καθαρισμός
+                </button>
+                <button type="button" class="btn btn-success" onclick="saveFullscreenSignature()">
+                    <i class="fas fa-check me-1"></i>Αποθήκευση
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Ακύρωση
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Signature Pad Variables
+    let canvas, ctx, isDrawing = false;
+    let signatureExists = false;
+
+    // Calculate total amount of selected violations
+    function updateTotalAmount() {
+        const checkedBoxes = document.querySelectorAll('.violation-checkbox:checked');
+        let total = 0;
+        checkedBoxes.forEach(checkbox => {
+            const fine = parseInt(checkbox.getAttribute('data-fine')) || 0;
+            total += fine;
+        });
+        document.getElementById('totalAmount').textContent = total;
+    }
+
+    // Add event listeners to all violation checkboxes
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('.violation-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateTotalAmount);
+        });
+        updateTotalAmount(); // Initial calculation
+    });
+
+    // Toggle driver details visibility
+    function toggleDriverDetails() {
+        const checkbox = document.getElementById('driver_present');
+        const driverDetails = document.getElementById('driver-details');
+        const driverInputs = driverDetails.querySelectorAll('input[type="text"]');
+        
+        if (checkbox.checked) {
+            driverDetails.style.display = 'block';
+            // Make driver fields required when visible
+            driverInputs.forEach(input => {
+                input.required = true;
+            });
+        } else {
+            driverDetails.style.display = 'none';
+            // Clear and make driver fields optional when hidden
+            driverInputs.forEach(input => {
+                input.required = false;
+                input.value = '';
+            });
+            // Clear signature too
+            clearSignature();
+        }
+    }
+
+    // Initialize Signature Pad
+    function initSignaturePad() {
+        canvas = document.getElementById('signature-canvas');
+        if (!canvas) {
+            console.log('Canvas element not found');
+            return;
+        }
+        
+        ctx = canvas.getContext('2d');
+        
+        // Set proper canvas dimensions
+        const container = canvas.parentElement;
+        const containerWidth = container.offsetWidth - 40; // Account for padding
+        
+        // Set both logical and visual dimensions to be the same
+        canvas.width = containerWidth;
+        canvas.height = 200;
+        canvas.style.width = containerWidth + 'px';
+        canvas.style.height = '200px';
+        
+        // Set drawing style with thinner line
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1.2; // Λεπτότερη γραμμή
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Set cursor style
+        canvas.style.cursor = 'crosshair';
+
+        console.log('Signature pad initialized successfully');
+        console.log('Canvas logical size:', canvas.width, 'x', canvas.height);
+        console.log('Canvas visual size:', canvas.offsetWidth, 'x', canvas.offsetHeight);
+
+        // Mouse events with proper scaling
+        canvas.addEventListener('mousedown', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            startDrawing({offsetX: x, offsetY: y});
+        });
+        
+        canvas.addEventListener('mousemove', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            draw({offsetX: x, offsetY: y});
+        });
+        
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+
+        // Touch events for mobile with proper scaling
+        canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
+            
+            startDrawing({offsetX: x, offsetY: y});
+        });
+        
+        canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
+            
+            draw({offsetX: x, offsetY: y});
+        });
+        
+        canvas.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            stopDrawing();
+        });
+    }
+
+    // Start drawing
+    function startDrawing(e) {
+        isDrawing = true;
+        ctx.beginPath();
+        ctx.moveTo(e.offsetX, e.offsetY);
+        console.log('Started drawing at (mouse/touch):', e.offsetX, e.offsetY);
+    }
+
+    // Draw line - improved for smoother lines
+    function draw(e) {
+        if (!isDrawing) return;
+        
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.stroke();
+        ctx.beginPath(); // Ξεκίνα νέο path για κάθε σημείο
+        ctx.moveTo(e.offsetX, e.offsetY); // Μετακίνηση στη νέα θέση
+        signatureExists = true;
+    }
+
+    // Stop drawing
+    function stopDrawing() {
+        if (isDrawing) {
+            isDrawing = false;
+            ctx.beginPath(); // Reset path
+            console.log('Stopped drawing');
+            // Αποθήκευση μόνο όταν τελειώνει η υπογραφή
+            saveSignature();
+        }
+    }
+
+    // Clear signature
+    function clearSignature() {
+        if (canvas && ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000000'; // Reset to black
+            signatureExists = false;
+            document.getElementById('signature_data').value = '';
+            console.log('Signature cleared');
+        }
+    }
+
+    // Save signature as base64
+    function saveSignature() {
+        if (canvas && signatureExists) {
+            const signatureData = canvas.toDataURL('image/png');
+            document.getElementById('signature_data').value = signatureData;
+            console.log('Signature saved');
+        }
+    }
+    
+    // Fullscreen Signature Functions
+    let fullscreenCanvas, fullscreenCtx, fullscreenDrawing = false;
+    
+    function openFullscreenSignature() {
+        // Εμφάνιση modal
+        const modal = new bootstrap.Modal(document.getElementById('fullscreenSignatureModal'));
+        modal.show();
+        
+        // Αναμονή για το modal να ανοίξει πλήρως
+        document.getElementById('fullscreenSignatureModal').addEventListener('shown.bs.modal', function() {
+            initFullscreenCanvas();
+        }, { once: true });
+    }
+    
+    function initFullscreenCanvas() {
+        fullscreenCanvas = document.getElementById('fullscreen-signature-canvas');
+        if (!fullscreenCanvas) return;
+        
+        fullscreenCtx = fullscreenCanvas.getContext('2d');
+        
+        // Ρύθμιση διαστάσεων για πλήρη οθόνη
+        const modalBody = fullscreenCanvas.closest('.modal-body');
+        const canvasContainer = fullscreenCanvas.parentElement;
+        
+        fullscreenCanvas.width = canvasContainer.offsetWidth - 20;
+        fullscreenCanvas.height = canvasContainer.offsetHeight - 20;
+        
+        // Ρύθμιση στυλ
+        fullscreenCtx.lineCap = 'round';
+        fullscreenCtx.lineJoin = 'round';
+        fullscreenCtx.strokeStyle = '#000000';
+        fullscreenCtx.lineWidth = 2; // Λίγο χοντρότερη για κινητό
+        fullscreenCtx.fillStyle = '#ffffff';
+        fullscreenCtx.fillRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
+        
+        // Touch events μόνο για το fullscreen canvas
+        fullscreenCanvas.addEventListener('touchstart', handleFullscreenTouchStart);
+        fullscreenCanvas.addEventListener('touchmove', handleFullscreenTouchMove);
+        fullscreenCanvas.addEventListener('touchend', handleFullscreenTouchEnd);
+        
+        console.log('Fullscreen signature canvas initialized');
+    }
+    
+    function handleFullscreenTouchStart(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = fullscreenCanvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        fullscreenDrawing = true;
+        fullscreenCtx.beginPath();
+        fullscreenCtx.moveTo(x, y);
+    }
+    
+    function handleFullscreenTouchMove(e) {
+        e.preventDefault();
+        if (!fullscreenDrawing) return;
+        
+        const touch = e.touches[0];
+        const rect = fullscreenCanvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        fullscreenCtx.lineTo(x, y);
+        fullscreenCtx.stroke();
+        fullscreenCtx.beginPath();
+        fullscreenCtx.moveTo(x, y);
+    }
+    
+    function handleFullscreenTouchEnd(e) {
+        e.preventDefault();
+        fullscreenDrawing = false;
+        fullscreenCtx.beginPath();
+    }
+    
+    function clearFullscreenSignature() {
+        if (fullscreenCanvas && fullscreenCtx) {
+            fullscreenCtx.fillStyle = '#ffffff';
+            fullscreenCtx.fillRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
+        }
+    }
+    
+    function saveFullscreenSignature() {
+        if (fullscreenCanvas) {
+            // Μετατροπή της fullscreen υπογραφής στο κανονικό canvas
+            if (canvas && ctx) {
+                // Καθαρισμός του κανονικού canvas
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Αντιγραφή της fullscreen υπογραφής
+                ctx.drawImage(fullscreenCanvas, 0, 0, canvas.width, canvas.height);
+                signatureExists = true;
+                
+                // Αποθήκευση
+                saveSignature();
+            }
+            
+            // Κλείσιμο modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('fullscreenSignatureModal'));
+            modal.hide();
+        }
+    }
+
+    // Check if signature is empty
+    function isSignatureEmpty() {
+        return !signatureExists || !document.getElementById('signature_data').value;
+    }
+
+    // Form submission validation
+    function validateForm() {
+        // Check if violations are selected
+        const violationCheckboxes = document.querySelectorAll('input[name="violations"]:checked');
+        if (violationCheckboxes.length === 0) {
+            alert('Παρακαλώ επιλέξτε τουλάχιστον μία παράβαση.');
+            return false;
+        }
+
+        const checkbox = document.getElementById('driver_present');
+        if (checkbox && checkbox.checked) {
+            // If driver is present, check if signature exists
+            if (isSignatureEmpty()) {
+                alert('Παρακαλώ προσθέστε την υπογραφή του οδηγού/παραβάτη.');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Dynamic field handling for custom colors and types
+    function handleCustomFields() {
+        // Custom vehicle color
+        const colorSelect = document.getElementById('vehicle_color');
+        const customColorDiv = document.getElementById('custom_color_div');
+        
+        if (colorSelect && customColorDiv) {
+            colorSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customColorDiv.style.display = 'block';
+                    document.getElementById('custom_vehicle_color').required = true;
+                } else {
+                    customColorDiv.style.display = 'none';
+                    document.getElementById('custom_vehicle_color').required = false;
+                }
+            });
+        }
+
+        // Custom vehicle type
+        const typeSelect = document.getElementById('vehicle_type');
+        const customTypeDiv = document.getElementById('custom_type_div');
+        
+        if (typeSelect && customTypeDiv) {
+            typeSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customTypeDiv.style.display = 'block';
+                    document.getElementById('custom_vehicle_type').required = true;
+                } else {
+                    customTypeDiv.style.display = 'none';
+                    document.getElementById('custom_vehicle_type').required = false;
+                }
+            });
+        }
+    }
+
+    // Camera functionality (existing camera code remains the same)
+    let stream = null;
+    
+    async function startCamera() {
+        try {
+            const video = document.getElementById('camera-preview');
+            const startBtn = document.getElementById('start-camera-btn');
+            const captureBtn = document.getElementById('capture-btn');
+            const stopBtn = document.getElementById('stop-camera-btn');
+            
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' }
+            });
+            
+            video.srcObject = stream;
+            video.style.display = 'block';
+            
+            startBtn.style.display = 'none';
+            captureBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'inline-block';
+            
+            document.getElementById('photo-status').innerHTML = 
+                '<div class="alert alert-info"><i class="fas fa-camera me-1"></i>Κάμερα ενεργή</div>';
+                
+        } catch (err) {
+            document.getElementById('photo-status').innerHTML = 
+                '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-1"></i>Σφάλμα κάμερας: ' + err.message + '</div>';
+        }
+    }
+    
+    function capturePhoto() {
+        const video = document.getElementById('camera-preview');
+        const canvas = document.getElementById('photo-canvas');
+        const preview = document.getElementById('photo-preview');
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        
+        const photoData = canvas.toDataURL('image/jpeg', 0.8);
+        document.getElementById('photo_data').value = photoData;
+        
+        preview.src = photoData;
+        preview.style.display = 'block';
+        
+        document.getElementById('photo-status').innerHTML = 
+            '<div class="alert alert-success"><i class="fas fa-check me-1"></i>Φωτογραφία αποθηκεύτηκε</div>';
+            
+        stopCamera();
+    }
+    
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        
+        const video = document.getElementById('camera-preview');
+        const startBtn = document.getElementById('start-camera-btn');
+        const captureBtn = document.getElementById('capture-btn');
+        const stopBtn = document.getElementById('stop-camera-btn');
+        
+        video.style.display = 'none';
+        startBtn.style.display = 'inline-block';
+        captureBtn.style.display = 'none';
+        stopBtn.style.display = 'none';
+    }
+
+    // Set current date and time as default
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing...');
+        
+        // Initialize signature pad
+        initSignaturePad();
+        
+        // Initialize custom fields
+        handleCustomFields();
+        
+        const now = new Date();
+        
+        // Set current date
+        const dateInput = document.getElementById('violation_date');
+        if (dateInput && !dateInput.value) {
+            dateInput.value = now.toISOString().split('T')[0];
+        }
+        
+        // Set current time
+        const timeInput = document.getElementById('violation_time');
+        if (timeInput && !timeInput.value) {
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            timeInput.value = `${hours}:${minutes}`;
+        }
+        
+        // Format AFM input
+        const afmInput = document.getElementById('driver_afm');
+        if (afmInput) {
+            afmInput.addEventListener('input', function(e) {
+                // Remove non-numeric characters
+                this.value = this.value.replace(/\D/g, '');
+                // Limit to 9 characters
+                if (this.value.length > 9) {
+                    this.value = this.value.slice(0, 9);
+                }
+            });
+        }
+
+        // Handle file upload preview
+        const fileInput = document.getElementById('photo_file');
+        if (fileInput) {
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.getElementById('photo-preview');
+                        preview.src = e.target.result;
+                        preview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        console.log('Initialization complete');
+    });
+</script>
+{% endblock %}
