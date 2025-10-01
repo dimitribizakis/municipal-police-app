@@ -1,0 +1,213 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Κεντρικό Dashboard - Δημοτική Αστυνομία{% endblock %}
+
+{% block content %}
+<!-- Header Navigation -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-shield-alt text-primary me-2 fa-lg"></i>
+                <h4 class="mb-0 text-primary">Δημοτική Αστυνομία</h4>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <!-- Messages notification -->
+                {% if unread_messages > 0 %}
+                <a href="{{ url_for('messages_inbox') }}" class="btn btn-outline-info position-relative">
+                    <i class="fas fa-envelope me-1"></i>Μηνύματα
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        {{ unread_messages }}
+                        <span class="visually-hidden">νέα μηνύματα</span>
+                    </span>
+                </a>
+                {% else %}
+                <a href="{{ url_for('messages_inbox') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-envelope me-1"></i>Μηνύματα
+                </a>
+                {% endif %}
+                
+                <!-- Admin/PowerUser access -->
+                {% if current_user.role in ['admin', 'poweruser'] %}
+                <a href="{% if current_user.role == 'admin' %}{{ url_for('admin_dashboard') }}{% else %}{{ url_for('poweruser_reports') }}{% endif %}" class="btn btn-warning">
+                    <i class="fas fa-cog me-1"></i>{{ current_user.role_display }}
+                </a>
+                {% endif %}
+                
+                <!-- User info -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                        <i class="fas fa-user me-1"></i>{{ current_user.first_name }} {{ current_user.last_name }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><h6 class="dropdown-header">{{ current_user.full_name }}</h6></li>
+                        <li><span class="dropdown-item-text"><small class="text-muted">{{ current_user.role_display }}</small></span></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-1"></i>Αποσύνδεση</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Welcome Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-gradient-primary text-white">
+            <div class="card-body text-center py-4">
+                <h2 class="mb-2">Καλώς ήρθατε, {{ current_user.first_name }}!</h2>
+                <p class="mb-0 fs-5">Επιλέξτε μια από τις παρακάτω υπηρεσίες για να συνεχίσετε</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <i class="fas fa-clipboard-list fa-2x text-primary mb-2"></i>
+                <h4 class="text-primary">{{ total_violations }}</h4>
+                <p class="text-muted mb-0">{% if current_user.role in ['admin', 'poweruser'] %}Συνολικές{% else %}Οι{% endif %} Παραβάσεις</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <i class="fas fa-calendar-day fa-2x text-success mb-2"></i>
+                <h4 class="text-success">{{ today_violations }}</h4>
+                <p class="text-muted mb-0">Σήμερα</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <i class="fas fa-envelope fa-2x text-info mb-2"></i>
+                <h4 class="text-info">{{ unread_messages }}</h4>
+                <p class="text-muted mb-0">Νέα Μηνύματα</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Menu Modules -->
+<div class="row g-4">
+    <!-- ΚΟΚ Module -->
+    <div class="col-lg-6 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm hover-card">
+            <div class="card-body text-center p-4">
+                <div class="mb-3">
+                    <i class="fas fa-car fa-4x text-danger"></i>
+                </div>
+                <h4 class="card-title text-danger mb-3">ΚΟΚ</h4>
+                <p class="card-text text-muted mb-4">Κώδικας Οδικής Κυκλοφορίας<br>
+Καταχώρηση παραβάσεων, έκδοση εντολών</p>
+                <a href="{{ url_for('kok_module') }}" class="btn btn-danger btn-lg">
+                    <i class="fas fa-arrow-right me-2"></i>Είσοδος
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Έλεγχος Καταστημάτων Module -->
+    <div class="col-lg-6 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm hover-card">
+            <div class="card-body text-center p-4">
+                <div class="mb-3">
+                    <i class="fas fa-store fa-4x text-info"></i>
+                </div>
+                <h4 class="card-title text-info mb-3">Έλεγχος Καταστημάτων</h4>
+                <p class="card-text text-muted mb-4">Έλεγχος άδειας λειτουργίας<br>
+Παραβάσεις καταστημάτων</p>
+                <a href="{{ url_for('elegxos_module') }}" class="btn btn-info btn-lg">
+                    <i class="fas fa-arrow-right me-2"></i>Είσοδος
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Επιδόσεις Εγγράφων Module -->
+    <div class="col-lg-6 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm hover-card">
+            <div class="card-body text-center p-4">
+                <div class="mb-3">
+                    <i class="fas fa-file-alt fa-4x text-success"></i>
+                </div>
+                <h4 class="card-title text-success mb-3">Επιδόσεις Εγγράφων</h4>
+                <p class="card-text text-muted mb-4">Επίδοση κλήσεων και εγγράφων<br>
+Παρακολούθηση επιδόσεων</p>
+                <a href="{{ url_for('epidoseis_module') }}" class="btn btn-success btn-lg">
+                    <i class="fas fa-arrow-right me-2"></i>Είσοδος
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Αναφορές/Καταγγελίες Module -->
+    <div class="col-lg-6 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm hover-card">
+            <div class="card-body text-center p-4">
+                <div class="mb-3">
+                    <i class="fas fa-exclamation-triangle fa-4x text-warning"></i>
+                </div>
+                <h4 class="card-title text-warning mb-3">Αναφορές/Καταγγελίες</h4>
+                <p class="card-text text-muted mb-4">Διαχείριση αναφορών<br>
+Καταγγελίες πολιτών</p>
+                <a href="{{ url_for('anafores_module') }}" class="btn btn-warning btn-lg">
+                    <i class="fas fa-arrow-right me-2"></i>Είσοδος
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Messages Module - Full Width -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm hover-card">
+            <div class="card-body text-center p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-2">
+                        <i class="fas fa-comments fa-4x text-primary"></i>
+                    </div>
+                    <div class="col-md-8">
+                        <h4 class="card-title text-primary mb-2">Μηνύματα</h4>
+                        <p class="card-text text-muted mb-0">Αποστολή και λήψη μηνυμάτων, επικοινωνία με συναδέλφους</p>
+                        {% if unread_messages > 0 %}
+                        <small class="text-danger">Έχετε {{ unread_messages }} νέα μηνύματα</small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{{ url_for('messages_inbox') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-arrow-right me-2"></i>Είσοδος
+                            {% if unread_messages > 0 %}
+                            <span class="badge bg-danger ms-2">{{ unread_messages }}</span>
+                            {% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+</style>
+
+{% endblock %}

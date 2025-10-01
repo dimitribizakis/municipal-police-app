@@ -1,0 +1,112 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Επιδόσεις Εγγράφων - Δημοτική Αστυνομία{% endblock %}
+
+{% block content %}
+<!-- Navigation Header -->
+<div class="row mb-3">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Κεντρικό Dashboard</a></li>
+                <li class="breadcrumb-item active">Επιδόσεις Εγγράφων</li>
+            </ol>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-arrow-left me-1"></i>Επιστροφή
+                </a>
+                <div>
+                    <h2 class="mb-0 text-success">
+                        <i class="fas fa-file-alt me-2"></i>Επιδόσεις Εγγράφων
+                    </h2>
+                    <small class="text-muted">Επίδοση κλήσεων και εγγράφων, παρακολούθηση επιδόσεων</small>
+                </div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
+                <i class="fas fa-sign-out-alt me-1"></i>Αποσύνδεση
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Module Content -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-tools me-2"></i>Εργαλεία Επιδόσεων Εγγράφων
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <!-- Νέα Επίδοση -->
+                    <div class="col-lg-6 col-md-6 mb-4">
+                        <div class="card h-100 border-primary">
+                            <div class="card-body text-center">
+                                <i class="fas fa-plus-circle fa-3x text-primary mb-3"></i>
+                                <h5 class="card-title text-primary">Νέα Επίδοση</h5>
+                                <p class="card-text text-muted">Καταχώρηση νέας επίδοσης εγγράφου</p>
+                                <a href="#" class="btn btn-primary" onclick="alert('Το module θα παραδοθεί σύντομα!')">
+                                    <i class="fas fa-plus me-1"></i>Νέα Επίδοση
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Παρακολούθηση Επιδόσεων -->
+                    <div class="col-lg-6 col-md-6 mb-4">
+                        <div class="card h-100 border-info">
+                            <div class="card-body text-center">
+                                <i class="fas fa-search fa-3x text-info mb-3"></i>
+                                <h5 class="card-title text-info">Παρακολούθηση</h5>
+                                <p class="card-text text-muted">Παρακολούθηση και ενημέρωση επιδόσεων</p>
+                                <a href="#" class="btn btn-info" onclick="alert('Το module θα παραδοθεί σύντομα!')">
+                                    <i class="fas fa-list me-1"></i>Παρακολούθηση
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Αναφορές Επιδόσεων -->
+                    <div class="col-lg-6 col-md-6 mb-4">
+                        <div class="card h-100 border-warning">
+                            <div class="card-body text-center">
+                                <i class="fas fa-chart-line fa-3x text-warning mb-3"></i>
+                                <h5 class="card-title text-warning">Αναφορές</h5>
+                                <p class="card-text text-muted">Αναφορές και στατιστικά επιδόσεων</p>
+                                <a href="#" class="btn btn-warning" onclick="alert('Το module θα παραδοθεί σύντομα!')">
+                                    <i class="fas fa-chart-bar me-1"></i>Αναφορές
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Ιστορικό Επιδόσεων -->
+                    <div class="col-lg-6 col-md-6 mb-4">
+                        <div class="card h-100 border-success">
+                            <div class="card-body text-center">
+                                <i class="fas fa-history fa-3x text-success mb-3"></i>
+                                <h5 class="card-title text-success">Ιστορικό</h5>
+                                <p class="card-text text-muted">Προβολή ιστορικού επιδόσεων</p>
+                                <a href="#" class="btn btn-success" onclick="alert('Το module θα παραδοθεί σύντομα!')">
+                                    <i class="fas fa-list me-1"></i>Ιστορικό
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Module Status Info -->
+                <div class="alert alert-info mt-4">
+                    <h6>Σημείωση:</h6>
+                    <p class="mb-0">Το module "Επιδόσεις Εγγράφων" βρίσκεται υπό ανάπτυξη. Θα περιλαμβάνει αναλυτικές λειτουργίες για την επίδοση και παρακολούθηση εγγράφων.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
