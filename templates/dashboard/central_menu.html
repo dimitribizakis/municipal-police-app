@@ -9,75 +9,8 @@
         <div class="col-12">
             <div class="jumbotron jumbotron-fluid bg-primary text-white">
                 <div class="container">
-                    <h1 class="display-4">Καλώς ήρθατε, {{ user.full_name }}!</h1>
-                    <p class="lead">{{ user.role_display }} - Σύστημα Διαχείρισης Δημοτικής Αστυνομίας v3.0</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Στατιστικά Dashboard -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="mr-3">
-                            <i class="fas fa-exclamation-triangle fa-2x"></i>
-                        </div>
-                        <div>
-                            <h5 class="card-title">Οι Παραβάσεις μου</h5>
-                            <h2 class="mb-0">{{ stats.my_violations }}</h2>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="mr-3">
-                            <i class="fas fa-list fa-2x"></i>
-                        </div>
-                        <div>
-                            <h5 class="card-title">Συνολικές Παραβάσεις</h5>
-                            <h2 class="mb-0">{{ stats.total_violations }}</h2>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="mr-3">
-                            <i class="fas fa-envelope fa-2x"></i>
-                        </div>
-                        <div>
-                            <h5 class="card-title">Αδιάβαστα Μηνύματα</h5>
-                            <h2 class="mb-0">{{ stats.unread_messages }}</h2>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-3">
-            <div class="card bg-secondary text-white">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="mr-3">
-                            <i class="fas fa-user fa-2x"></i>
-                        </div>
-                        <div>
-                            <h5 class="card-title">Ρόλος</h5>
-                            <h6 class="mb-0">{{ user.role_display }}</h6>
-                        </div>
-                    </div>
+                    <h3 class="mb-1">Καλώς ήρθατε, {{ user.full_name }}!</h3>
+                    <p class="mb-0">{{ user.role_display }} - Σύστημα Διαχείρισης Δημοτικής Αστυνομίας v3.0</p>
                 </div>
             </div>
         </div>
@@ -210,7 +143,7 @@
             </a>
         </div>
         
-        {% if user.can_manage_users() %}
+        {% if user.can_manage_users %}
         <div class="col-md-3">
             <a href="{{ url_for('add_user') }}" class="btn btn-outline-success btn-block mb-2">
                 <i class="fas fa-user-plus mr-2"></i>
