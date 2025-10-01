@@ -1,0 +1,415 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Επεξεργασία Παράβασης #{{ violation.id }} - Δημοτική Αστυνομία{% endblock %}
+
+{% block extra_css %}
+<style>
+.signature-pad {
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+.signature-pad:hover {
+    border-color: #007bff;
+}
+
+#signature-canvas {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: crosshair;
+    display: block;
+    margin: 0 auto;
+    background: white;
+    touch-action: none;
+}
+
+#signature-canvas:hover {
+    border-color: #007bff;
+}
+
+.signature-instructions {
+    color: #6c757d;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+.edit-warning {
+    background: linear-gradient(45deg, #ffeb3b, #ffc107);
+    border: 2px solid #ff9800;
+    color: #f57c00;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Admin Warning -->
+        <div class="alert edit-warning mb-4" role="alert">
+            <i class="fas fa-edit me-2"></i>
+            <strong>ΕΠΕΞΕΡΓΑΣΙΑ ΠΑΡΑΒΑΣΗΣ</strong> - Τροποποιούμε την παράβαση #{{ violation.id }} από {{ violation.violation_date.strftime('%d/%m/%Y') }}
+        </div>
+        
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Επεξεργασία Παράβασης #{{ violation.id }}
+                    </h4>
+                </div>
+                <div>
+                    <a href="{{ url_for('view_violations') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left me-1"></i>Επιστροφή
+                    </a>
+                    <small class="text-muted">
+                        <i class="fas fa-user me-1"></i>{{ current_user.first_name }} {{ current_user.last_name }}
+                    </small>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('update_violation', violation_id=violation.id) }}" enctype="multipart/form-data">
+                    
+                    <!-- Στοιχεία Οχήματος -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-car me-2"></i>Στοιχεία Οχήματος
+                            </h5>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="license_plate" class="form-label">
+                                <i class="fas fa-square me-1"></i>Αριθμός Κυκλοφορίας <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="license_plate" 
+                                       name="license_plate" 
+                                       value="{{ violation.license_plate }}"
+                                       required 
+                                       style="text-transform: uppercase;">
+                                <button type="button" id="search-license" class="btn btn-outline-info">
+                                    <i class="fas fa-search"></i> Αναζήτηση
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle_brand" class="form-label">
+                                <i class="fas fa-industry me-1"></i>Μάρκα <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="vehicle_brand" 
+                                   name="vehicle_brand" 
+                                   value="{{ violation.vehicle_brand }}"
+                                   required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle_color" class="form-label">
+                                <i class="fas fa-palette me-1"></i>Χρώμα <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-control" id="vehicle_color" name="vehicle_color" required>
+                                {% for color in vehicle_colors %}
+                                <option value="{{ color.value }}" {% if color.value == violation.vehicle_color %}selected{% endif %}>{{ color.value }}</option>
+                                {% endfor %}
+                                <option value="custom" {% if violation.vehicle_color not in vehicle_colors|map(attribute='value')|list %}selected{% endif %}>Άλλο...</option>
+                            </select>
+                            <div id="custom_color_div" style="display: {% if violation.vehicle_color not in vehicle_colors|map(attribute='value')|list %}block{% else %}none{% endif %};" class="mt-2">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="custom_vehicle_color" 
+                                       name="custom_vehicle_color" 
+                                       value="{% if violation.vehicle_color not in vehicle_colors|map(attribute='value')|list %}{{ violation.vehicle_color }}{% endif %}"
+                                       placeholder="Καταχωρήστε χρώμα...">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle_type" class="form-label">
+                                <i class="fas fa-car-side me-1"></i>Τύπος οχήματος <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-control" id="vehicle_type" name="vehicle_type" required>
+                                {% for type in vehicle_types %}
+                                <option value="{{ type.value }}" {% if type.value == violation.vehicle_type %}selected{% endif %}>{{ type.value }}</option>
+                                {% endfor %}
+                                <option value="custom" {% if violation.vehicle_type not in vehicle_types|map(attribute='value')|list %}selected{% endif %}>Άλλο...</option>
+                            </select>
+                            <div id="custom_type_div" style="display: {% if violation.vehicle_type not in vehicle_types|map(attribute='value')|list %}block{% else %}none{% endif %};" class="mt-2">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="custom_vehicle_type" 
+                                       name="custom_vehicle_type" 
+                                       value="{% if violation.vehicle_type not in vehicle_types|map(attribute='value')|list %}{{ violation.vehicle_type }}{% endif %}"
+                                       placeholder="Καταχωρήστε τύπο οχήματος...">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Στοιχεία Παράβασης -->
+                    <div class="row mb-4 mt-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Στοιχεία Παράβασης
+                            </h5>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="violation_date" class="form-label">
+                                <i class="fas fa-calendar me-1"></i>Ημερομηνία <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="violation_date" 
+                                   name="violation_date" 
+                                   value="{{ violation.violation_date.strftime('%Y-%m-%d') }}"
+                                   required>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="violation_time" class="form-label">
+                                <i class="fas fa-clock me-1"></i>Ώρα <span class="text-danger">*</span>
+                            </label>
+                            <input type="time" 
+                                   class="form-control" 
+                                   id="violation_time" 
+                                   name="violation_time" 
+                                   value="{{ violation.violation_time.strftime('%H:%M') }}"
+                                   required>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="street" class="form-label">
+                                <i class="fas fa-road me-1"></i>Οδός <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="street" 
+                                   name="street" 
+                                   value="{{ violation.street }}"
+                                   required>
+                        </div>
+                        
+                        <div class="col-md-2 mb-3">
+                            <label for="street_number" class="form-label">
+                                <i class="fas fa-hashtag me-1"></i>Αριθμός <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="street_number" 
+                                   name="street_number" 
+                                   value="{{ violation.street_number }}"
+                                   required>
+                        </div>
+                    </div>
+                    
+                    <!-- Επιλογή Παραβάσεων -->
+                    <div class="row mb-4 mt-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-list-check me-2"></i>Παραβάσεις <span class="text-danger">*</span>
+                            </h5>
+                        </div>
+                    </div>
+                    
+                    {% set selected_violations_list = violation.get_selected_violations_list() %}
+                    <div class="row">
+                        {% for violation_data in violations %}
+                        <div class="col-md-6 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       name="violations" 
+                                       value="{{ violation_data.code }}" 
+                                       id="violation_{{ violation_data.id }}"
+                                       {% if violation_data.code in selected_violations_list %}checked{% endif %}>
+                                <label class="form-check-label small" for="violation_{{ violation_data.id }}">
+                                    <strong>{{ violation_data.code }}</strong>: {{ violation_data.description }}
+                                    {% if violation_data.fine_amount %}
+                                        <span class="badge bg-success ms-1">{{ violation_data.fine_amount }}€</span>
+                                    {% endif %}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Επιτόπια Μέτρα -->
+                    <div class="row mb-4 mt-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-hand-paper me-2"></i>Επιτόπια Μέτρα
+                            </h5>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       name="plates_removed" 
+                                       id="plates_removed"
+                                       {% if violation.plates_removed %}checked{% endif %}>
+                                <label class="form-check-label" for="plates_removed">
+                                    <i class="fas fa-square me-1"></i>Αφαίρεση πινακίδων κυκλοφορίας
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       name="license_removed" 
+                                       id="license_removed"
+                                       {% if violation.license_removed %}checked{% endif %}>
+                                <label class="form-check-label" for="license_removed">
+                                    <i class="fas fa-id-card me-1"></i>Αφαίρεση άδειας οδήγησης
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       name="registration_removed" 
+                                       id="registration_removed"
+                                       {% if violation.registration_removed %}checked{% endif %}>
+                                <label class="form-check-label" for="registration_removed">
+                                    <i class="fas fa-file-alt me-1"></i>Αφαίρεση άδειας κυκλοφορίας
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Κουμπιά -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <a href="{{ url_for('view_violations') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-1"></i>Ακύρωση
+                                    </a>
+                                </div>
+                                <div>
+                                    <button type="submit" class="btn btn-warning btn-lg">
+                                        <i class="fas fa-save me-2"></i>Ενημέρωση Παράβασης
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-complete functionality
+document.getElementById('search-license').addEventListener('click', function() {
+    const licensePlate = document.getElementById('license_plate').value.trim();
+    
+    if (!licensePlate) {
+        alert('Παρακαλώ εισάγετε αριθμό κυκλοφορίας πρώτα.');
+        return;
+    }
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('license_plate', licensePlate);
+    
+    // Send AJAX request
+    fetch('/api/search_license_plate', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.found) {
+            // Populate fields
+            document.getElementById('vehicle_brand').value = data.vehicle_brand || '';
+            
+            // Handle vehicle color
+            const colorSelect = document.getElementById('vehicle_color');
+            const colorFound = Array.from(colorSelect.options).some(option => {
+                if (option.value === data.vehicle_color) {
+                    option.selected = true;
+                    return true;
+                }
+                return false;
+            });
+            
+            if (!colorFound && data.vehicle_color) {
+                colorSelect.value = 'custom';
+                document.getElementById('custom_color_div').style.display = 'block';
+                document.getElementById('custom_vehicle_color').value = data.vehicle_color;
+            }
+            
+            // Handle vehicle type
+            const typeSelect = document.getElementById('vehicle_type');
+            const typeFound = Array.from(typeSelect.options).some(option => {
+                if (option.value === data.vehicle_type) {
+                    option.selected = true;
+                    return true;
+                }
+                return false;
+            });
+            
+            if (!typeFound && data.vehicle_type) {
+                typeSelect.value = 'custom';
+                document.getElementById('custom_type_div').style.display = 'block';
+                document.getElementById('custom_vehicle_type').value = data.vehicle_type;
+            }
+            
+            alert('Βρέθηκαν στοιχεία και συμπληρώθηκαν αυτόματα!');
+        } else {
+            alert('Δεν βρέθηκαν στοιχεία για αυτήν την πινακίδα.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Σφάλμα κατά την αναζήτηση.');
+    });
+});
+
+// Custom color/type handlers
+document.getElementById('vehicle_color').addEventListener('change', function() {
+    const customDiv = document.getElementById('custom_color_div');
+    if (this.value === 'custom') {
+        customDiv.style.display = 'block';
+        document.getElementById('custom_vehicle_color').required = true;
+    } else {
+        customDiv.style.display = 'none';
+        document.getElementById('custom_vehicle_color').required = false;
+    }
+});
+
+document.getElementById('vehicle_type').addEventListener('change', function() {
+    const customDiv = document.getElementById('custom_type_div');
+    if (this.value === 'custom') {
+        customDiv.style.display = 'block';
+        document.getElementById('custom_vehicle_type').required = true;
+    } else {
+        customDiv.style.display = 'none';
+        document.getElementById('custom_vehicle_type').required = false;
+    }
+});
+</script>
+{% endblock %}
