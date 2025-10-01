@@ -40,6 +40,55 @@ db = SQLAlchemy(app)
 
 # ======================== DATABASE MODELS ========================
 
+# ============= TEMPORARY MIGRATION FUNCTION =============
+def run_migration_if_needed():
+    """Τρέχει το migration αν χρειάζεται - ΜΟΝΟ ΜΙΑ ΦΟΡΑ"""
+    try:
+        from sqlalchemy import text
+        
+        print("🔄 Checking if migration is needed...")
+        
+        # Έλεγχος αν υπάρχει η στήλη 'article'
+        result = db.session.execute(text(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'violations_data' AND column_name = 'article'"
+        ))
+        
+        if result.fetchone():
+            print("✅ Migration already completed!")
+            return
+        
+        print("🚀 Running PostgreSQL migration...")
+        
+        commands = [
+            'ALTER TABLE violations_data ADD COLUMN article TEXT',
+            'ALTER TABLE violations_data ADD COLUMN article_paragraph TEXT',
+            'ALTER TABLE violations_data ADD COLUMN remove_circulation_elements BOOLEAN DEFAULT FALSE',
+            'ALTER TABLE violations_data ADD COLUMN circulation_removal_days INTEGER DEFAULT 0',
+            'ALTER TABLE violations_data ADD COLUMN remove_circulation_license BOOLEAN DEFAULT FALSE',
+            'ALTER TABLE violations_data ADD COLUMN circulation_license_removal_days INTEGER DEFAULT 0',
+            'ALTER TABLE violations_data ADD COLUMN remove_driving_license BOOLEAN DEFAULT FALSE',
+            'ALTER TABLE violations_data ADD COLUMN driving_license_removal_days INTEGER DEFAULT 0',
+            'ALTER TABLE violations_data ADD COLUMN half_fine_motorcycles BOOLEAN DEFAULT FALSE',
+            'ALTER TABLE violations_data ADD COLUMN parking_special_provision BOOLEAN DEFAULT FALSE',
+            'ALTER TABLE violations_data ADD COLUMN is_active BOOLEAN DEFAULT TRUE'
+        ]
+        
+        success_count = 0
+        for cmd in commands:
+            try:
+                db.session.execute(text(cmd))
+                print(f"✅ Added column: {cmd.split()[4]}")
+                success_count += 1
+            except Exception as e:
+                print(f"⚠️ Column already exists: {cmd.split()[4]}")
+        
+        db.session.commit()
+        print(f"🎉 Migration completed! Added {success_count} new columns")
+        
+    except Exception as e:
+        print(f"❌ Migration error: {e}")
+        db.session.rollback()
+
 class User(db.Model):
     """Πίνακας Χρηστών (Δημοτικοί Αστυνομικοί + Admin + PowerUser)"""
     id = db.Column(db.Integer, primary_key=True)
@@ -1451,6 +1500,9 @@ def submit_violation():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        
+        # ⚡ RUN MIGRATION - ΠΡΟΣΩΡΙΝΌ!
+        run_migration_if_needed()
         
         # Δημιουργία default admin αν δεν υπάρχει
         admin = User.query.filter_by(username='admin').first()
