@@ -485,6 +485,25 @@ def dashboard():
     
     return render_template('dashboard/central_menu.html', user=user, stats=stats)
 
+@app.route('/violations')
+@login_required
+def view_violations():
+    """Προβολή όλων των παραβάσεων"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 50  # Αριθμός παραβάσεων ανά σελίδα
+    
+    # Παίρνουμε τις παραβάσεις με pagination
+    violations = Violation.query.order_by(Violation.id.desc()).paginate(
+        page=page, 
+        per_page=per_page, 
+        error_out=False
+    )
+    
+    # Παίρνουμε τον χρήστη
+    user = User.query.get(session['user_id'])
+    
+    return render_template('violations_list_v2.html', violations=violations, user=user)
+
 # ======================== MODULE ROUTES ========================
 
 @app.route('/kok')
@@ -685,6 +704,20 @@ def add_user():
             return redirect(url_for('admin_users'))
     
     return render_template('admin/add_user_enhanced.html')
+
+@app.route('/admin/violations')
+@login_required
+@admin_required
+def admin_violations():
+    """Διαχείριση παραβάσεων"""
+    return render_template('admin/violations.html')
+
+@app.route('/admin/reports') 
+@login_required
+@admin_required
+def admin_reports():
+    """Αναφορές και στατιστικά"""
+    return render_template('admin/reports.html')
 
 if __name__ == '__main__':
     with app.app_context():
