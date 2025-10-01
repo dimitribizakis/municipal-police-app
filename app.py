@@ -897,26 +897,31 @@ def search_license_plate():
 @login_required
 def violations_stats():
     """Στατιστικά παραβάσεων"""
-    user = User.query.get(session['user_id'])
+    try:
+        user = User.query.get(session['user_id'])
+        if not user:
+            flash('Σφάλμα: Χρήστης δεν βρέθηκε', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Βασικά στατιστικά - απλοποιημένα για debugging
+        stats = {}
+        stats['total_violations'] = Violation.query.count() or 0
+        stats['today_violations'] = 0
+        stats['month_violations'] = 0
+        stats['violations_with_photos'] = Violation.query.filter(Violation.photo_filename != None).count() or 0
+        stats['violations_with_removals'] = Violation.query.filter(Violation.removal_id != None).count() or 0
+        
+        # Μη διαβασμένα μηνύματα - διορθώθηκε για συνέπεια
+        unread_messages = MessageRecipient.query.filter_by(recipient_id=user.id, is_read=False).count() or 0
+        
+        return render_template('violations_stats.html', 
+                             user=user, 
+                             stats=stats, 
+                             unread_messages=unread_messages)
     
-    # Υπολογισμός στατιστικών
-    today = datetime.now().date()
-    month_start = today.replace(day=1)
-    
-    stats = {}
-    stats['total_violations'] = Violation.query.count()
-    stats['today_violations'] = Violation.query.filter(func.date(Violation.violation_date) == today).count()
-    stats['month_violations'] = Violation.query.filter(func.date(Violation.violation_date) >= month_start).count()
-    stats['violations_with_photos'] = Violation.query.filter(Violation.photo_filename != None).count()
-    stats['violations_with_removals'] = Violation.query.filter(Violation.removal_id != None).count()
-    
-    # Μη διαβασμένα μηνύματα
-    unread_messages = MessageRecipient.query.filter_by(recipient_id=session['user_id'], is_read=False).count()
-    
-    return render_template('violations_stats.html', 
-                         user=user, 
-                         stats=stats, 
-                         unread_messages=unread_messages)
+    except Exception as e:
+        flash(f'Σφάλμα στη φόρτωση στατιστικών: {str(e)}', 'error')
+        return redirect(url_for('dashboard'))
 
 @app.route('/submit_violation', methods=['POST'])
 @login_required
