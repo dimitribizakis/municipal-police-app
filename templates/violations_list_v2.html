@@ -8,11 +8,11 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
-                <a href="{{ url_for('index') }}" class="btn btn-outline-primary me-2">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary me-2">
                     <i class="fas fa-arrow-left me-1"></i>Επιστροφή στην Κεντρική
                 </a>
                 <small class="text-muted">
-                    <i class="fas fa-user me-1"></i>Συνδεδεμένος ως: {{ current_user.first_name }} {{ current_user.last_name }}
+                    <i class="fas fa-user me-1"></i>Συνδεδεμένος ως: {{ user.first_name }} {{ user.last_name }}
                 </small>
             </div>
             <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
