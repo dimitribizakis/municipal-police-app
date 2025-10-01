@@ -36,6 +36,39 @@
     </div>
 </div>
 
+<!-- Search Form -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('view_violations') }}" class="row g-3">
+                    <div class="col-md-8">
+                        <label for="search_plate" class="form-label">
+                            <i class="fas fa-search me-1"></i>Αναζήτηση με Αριθμό Κυκλοφορίας
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="search_plate" 
+                               name="search_plate" 
+                               value="{{ request.args.get('search_plate', '') }}"
+                               placeholder="π.χ. ABC-1234 ή ABC1234">
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search me-1"></i>Αναζήτηση
+                        </button>
+                        {% if request.args.get('search_plate') %}
+                        <a href="{{ url_for('view_violations') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Καθαρισμός
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% if violations.items %}
 <div class="row">
     <div class="col-12">
@@ -43,6 +76,9 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="fas fa-table me-2"></i>Λίστα Παραβάσεων
+                    {% if request.args.get('search_plate') %}
+                        <span class="badge bg-info ms-2">Φιλτραρισμένα για: {{ request.args.get('search_plate') }}</span>
+                    {% endif %}
                 </h5>
                 <small class="text-muted">
                     Εμφάνιση {{ violations.page * violations.per_page - violations.per_page + 1 }} - 
@@ -151,7 +187,7 @@
                     <ul class="pagination justify-content-center">
                         {% if violations.has_prev %}
                         <li class="page-item">
-                            <a class="page-link" href="{{ url_for('view_violations', page=violations.prev_num) }}">
+                            <a class="page-link" href="{{ url_for('view_violations', page=violations.prev_num, search_plate=request.args.get('search_plate', '')) }}">
                                 <i class="fas fa-chevron-left"></i> Προηγούμενη
                             </a>
                         </li>
@@ -161,7 +197,7 @@
                             {% if page_num %}
                                 {% if page_num != violations.page %}
                                 <li class="page-item">
-                                    <a class="page-link" href="{{ url_for('view_violations', page=page_num) }}">
+                                    <a class="page-link" href="{{ url_for('view_violations', page=page_num, search_plate=request.args.get('search_plate', '')) }}">
                                         {{ page_num }}
                                     </a>
                                 </li>
@@ -179,7 +215,7 @@
                         
                         {% if violations.has_next %}
                         <li class="page-item">
-                            <a class="page-link" href="{{ url_for('view_violations', page=violations.next_num) }}">
+                            <a class="page-link" href="{{ url_for('view_violations', page=violations.next_num, search_plate=request.args.get('search_plate', '')) }}">
                                 Επόμενη <i class="fas fa-chevron-right"></i>
                             </a>
                         </li>
@@ -234,14 +270,25 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body text-center py-5">
-                <i class="fas fa-inbox fa-4x text-muted mb-4"></i>
-                <h4 class="text-muted">Δεν έχετε καταχωρήσει παραβάσεις ακόμα</h4>
-                <p class="text-muted mb-4">
-                    Ξεκινήστε καταχωρώντας την πρώτη σας παράβαση
-                </p>
-                <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
-                    <i class="fas fa-plus me-2"></i>Καταχώρηση Πρώτης Παράβασης
-                </a>
+                {% if request.args.get('search_plate') %}
+                    <i class="fas fa-search fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted">Δεν βρέθηκαν παραβάσεις</h4>
+                    <p class="text-muted mb-4">
+                        Δεν βρέθηκε καμία παράβαση με αριθμό κυκλοφορίας: <strong>{{ request.args.get('search_plate') }}</strong>
+                    </p>
+                    <a href="{{ url_for('view_violations') }}" class="btn btn-primary">
+                        <i class="fas fa-times me-2"></i>Καθαρισμός Αναζήτησης
+                    </a>
+                {% else %}
+                    <i class="fas fa-inbox fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted">Δεν έχετε καταχωρήσει παραβάσεις ακόμα</h4>
+                    <p class="text-muted mb-4">
+                        Ξεκινήστε καταχωρώντας την πρώτη σας παράβαση
+                    </p>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>Καταχώρηση Πρώτης Παράβασης
+                    </a>
+                {% endif %}
             </div>
         </div>
     </div>
