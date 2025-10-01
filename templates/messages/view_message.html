@@ -54,7 +54,7 @@
                     
                     <!-- Περιεχόμενο -->
                     <div class="message-content">
-                        {{ message.content|nl2br }}
+                        {{ message.content.replace('\n', '<br>')|safe }}
                     </div>
                 </div>
                 
