@@ -8,6 +8,7 @@ from functools import wraps
 from decimal import Decimal
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func, or_
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from PIL import Image
@@ -121,6 +122,17 @@ class DynamicField(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
+
+class ViolationsData(db.Model):
+    """Πίνακας Τύπων Παραβάσεων"""
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.String(200), nullable=False)
+    paragraph = db.Column(db.String(100), nullable=True)
+    fine_cars = db.Column(db.Numeric(8,2), nullable=False)
+    fine_motorcycles = db.Column(db.Numeric(8,2), nullable=True)
+    fine_trucks = db.Column(db.Numeric(8,2), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Violation(db.Model):
     """Πίνακας Παραβάσεων"""
@@ -813,6 +825,211 @@ def admin_violations():
 def admin_reports():
     """Αναφορές και στατιστικά"""
     return render_template('admin/reports.html')
+
+# ======================== MISSING ROUTES FIX ========================
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """Dashboard redirect to index"""
+    return redirect(url_for('index'))
+
+@app.route('/index')
+@app.route('/')
+@login_required
+def index():
+    """Κεντρική σελίδα"""
+    user = User.query.get(session['user_id'])
+    
+    # Στατιστικά
+    my_violations = Violation.query.filter_by(officer_id=session['user_id']).count()
+    total_violations = Violation.query.count()
+    unread_messages = MessageRecipient.query.filter_by(
+        recipient_id=session['user_id'], 
+        is_read=False
+    ).count()
+    
+    stats = {
+        'my_violations': my_violations,
+        'total_violations': total_violations,
+        'unread_messages': unread_messages
+    }
+    
+    return render_template('dashboard/central_menu.html', user=user, stats=stats)
+
+@app.route('/violations/new', methods=['GET', 'POST'])
+@login_required
+def violations_new():
+    """Νέα παράβαση"""
+    return redirect(url_for('new_violation'))
+
+@app.route('/new-violation', methods=['GET', 'POST'])
+@login_required  
+def new_violation():
+    """Φόρμα νέας παράβασης"""
+    if request.method == 'POST':
+        return redirect(url_for('submit_violation'))
+    
+    # Λήψη διαθέσιμων χρωμάτων και τύπων οχημάτων
+    vehicle_colors = DynamicField.query.filter_by(field_type='vehicle_color', is_active=True).all()
+    vehicle_types = DynamicField.query.filter_by(field_type='vehicle_type', is_active=True).all()
+    
+    # Λήψη παραβάσεων από πίνακα violations_data
+    violations = ViolationsData.query.filter_by(is_active=True).all()
+    
+    current_user = User.query.get(session['user_id'])
+    
+    return render_template('index.html', 
+                         vehicle_colors=vehicle_colors,
+                         vehicle_types=vehicle_types, 
+                         violations=violations,
+                         current_user=current_user,
+                         datetime=datetime)
+
+@app.route('/violations/search')
+@login_required
+def violations_search():
+    """Αναζήτηση παραβάσεων"""
+    return redirect(url_for('view_violations'))
+
+@app.route('/api/search_license_plate', methods=['POST'])
+@login_required
+def search_license_plate():
+    """API endpoint για αναζήτηση πινακίδας και αυτόματη συμπλήρωση πεδίων"""
+    try:
+        data = request.get_json()
+        license_plate = data.get('license_plate', '').strip().upper()
+        
+        if not license_plate:
+            return jsonify({'success': False, 'message': 'Δεν δόθηκε πινακίδα'})
+        
+        # Αναζήτηση της πιο πρόσφατης παράβασης για αυτή την πινακίδα
+        violation = Violation.query.filter_by(license_plate=license_plate)\
+                                 .order_by(Violation.created_at.desc())\
+                                 .first()
+        
+        if violation:
+            return jsonify({
+                'success': True,
+                'found': True,
+                'data': {
+                    'vehicle_brand': violation.vehicle_brand,
+                    'vehicle_color': violation.vehicle_color, 
+                    'vehicle_type': violation.vehicle_type
+                },
+                'message': f'Βρέθηκαν στοιχεία για την πινακίδα {license_plate}'
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'found': False,
+                'message': f'Δεν βρέθηκαν στοιχεία για την πινακίδα {license_plate}'
+            })
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Σφάλμα: {str(e)}'})
+
+@app.route('/violations/stats')
+@login_required
+def violations_stats():
+    """Στατιστικά παραβάσεων"""
+    user = User.query.get(session['user_id'])
+    
+    # Υπολογισμός στατιστικών
+    today = datetime.now().date()
+    month_start = today.replace(day=1)
+    
+    stats = {}
+    stats['total_violations'] = Violation.query.count()
+    stats['today_violations'] = Violation.query.filter(func.date(Violation.violation_date) == today).count()
+    stats['month_violations'] = Violation.query.filter(func.date(Violation.violation_date) >= month_start).count()
+    stats['violations_with_photos'] = Violation.query.filter(Violation.photo_filename != None).count()
+    stats['violations_with_removals'] = Violation.query.filter(Violation.removal_id != None).count()
+    
+    # Μη διαβασμένα μηνύματα
+    unread_messages = MessageRecipient.query.filter_by(recipient_id=session['user_id'], is_read=False).count()
+    
+    return render_template('violations_stats.html', 
+                         user=user, 
+                         stats=stats, 
+                         unread_messages=unread_messages)
+
+@app.route('/submit_violation', methods=['POST'])
+@login_required
+def submit_violation():
+    """Υποβολή νέας παράβασης"""
+    try:
+        # Λήψη δεδομένων από φόρμα
+        license_plate = request.form['license_plate'].strip().upper()
+        vehicle_brand = request.form['vehicle_brand'].strip()
+        vehicle_color = request.form['vehicle_color'].strip()
+        vehicle_type = request.form['vehicle_type'].strip()
+        
+        # Επεξεργασία custom πεδίων
+        if vehicle_color == 'custom':
+            vehicle_color = request.form['custom_vehicle_color'].strip()
+            # Προσθήκη στη βάση δυναμικών πεδίων
+            new_color = DynamicField(
+                field_type='vehicle_color',
+                value=vehicle_color,
+                created_by=session['user_id']
+            )
+            db.session.add(new_color)
+        
+        if vehicle_type == 'custom':
+            vehicle_type = request.form['custom_vehicle_type'].strip()
+            # Προσθήκη στη βάση δυναμικών πεδίων  
+            new_type = DynamicField(
+                field_type='vehicle_type',
+                value=vehicle_type,
+                created_by=session['user_id']
+            )
+            db.session.add(new_type)
+        
+        # Στοιχεία παράβασης
+        violation_date = datetime.strptime(request.form['violation_date'], '%Y-%m-%d').date()
+        violation_time = datetime.strptime(request.form['violation_time'], '%H:%M').time()
+        street = request.form['street'].strip()
+        street_number = request.form['street_number'].strip()
+        
+        # Επιλεγμένες παραβάσεις
+        selected_violations = request.form.getlist('violations')
+        if not selected_violations:
+            flash('Πρέπει να επιλέξετε τουλάχιστον μία παράβαση.', 'error')
+            return redirect(url_for('new_violation'))
+        
+        # Επιτόπια μέτρα
+        plates_removed = 'plates_removed' in request.form
+        license_removed = 'license_removed' in request.form  
+        registration_removed = 'registration_removed' in request.form
+        
+        # Δημιουργία παράβασης
+        violation = Violation(
+            license_plate=license_plate,
+            vehicle_brand=vehicle_brand,
+            vehicle_color=vehicle_color,
+            vehicle_type=vehicle_type,
+            violation_date=violation_date,
+            violation_time=violation_time,
+            street=street,
+            street_number=street_number,
+            selected_violations=json.dumps(selected_violations),
+            plates_removed=plates_removed,
+            license_removed=license_removed,
+            registration_removed=registration_removed,
+            officer_id=session['user_id']
+        )
+        
+        db.session.add(violation)
+        db.session.commit()
+        
+        flash('Η παράβαση καταχωρήθηκε επιτυχώς!', 'success')
+        return redirect(url_for('view_violations'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Σφάλμα κατά την καταχώρηση: {str(e)}', 'error')
+        return redirect(url_for('new_violation'))
 
 if __name__ == '__main__':
     with app.app_context():
