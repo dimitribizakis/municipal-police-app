@@ -903,13 +903,35 @@ def violations_stats():
             flash('Σφάλμα: Χρήστης δεν βρέθηκε', 'error')
             return redirect(url_for('dashboard'))
         
-        # Βασικά στατιστικά - απλοποιημένα για debugging
+        # Βασικά στατιστικά
         stats = {}
         stats['total_violations'] = Violation.query.count() or 0
-        stats['today_violations'] = 0
-        stats['month_violations'] = 0
+        
+        # Date statistics με ασφαλή τρόπο
+        from datetime import date
+        today = date.today()
+        month_start = today.replace(day=1)
+        
+        # Στατιστικά ημέρας (χρήση string comparison αντί για func.date)
+        stats['today_violations'] = Violation.query.filter(
+            Violation.violation_date == today
+        ).count() or 0
+        
+        # Στατιστικά μήνα
+        stats['month_violations'] = Violation.query.filter(
+            Violation.violation_date >= month_start
+        ).count() or 0
+        
         stats['violations_with_photos'] = Violation.query.filter(Violation.photo_filename != None).count() or 0
-        stats['violations_with_removals'] = Violation.query.filter(Violation.removal_id != None).count() or 0
+        
+        # Παραβάσεις με επιτόπια μέτρα (πινακίδες, άδεια, κυκλοφορία)
+        stats['violations_with_removals'] = Violation.query.filter(
+            or_(
+                Violation.plates_removed == True,
+                Violation.license_removed == True, 
+                Violation.registration_removed == True
+            )
+        ).count() or 0
         
         # Μη διαβασμένα μηνύματα - διορθώθηκε για συνέπεια
         unread_messages = MessageRecipient.query.filter_by(recipient_id=user.id, is_read=False).count() or 0
