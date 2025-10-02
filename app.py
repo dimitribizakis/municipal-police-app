@@ -1194,7 +1194,7 @@ def violations_search():
 @app.route('/api/search_license_plate', methods=['POST'])
 @login_required
 def search_license_plate():
-    """API endpoint για αναζήτηση πινακίδας και αυτόματη συμπλήρωση πεδίων"""
+    """API endpoint για αναζήτηση πινακίδας και εμφάνιση όλων των παραβάσεων"""
     try:
         data = request.get_json()
         license_plate = data.get('license_plate', '').strip().upper()
@@ -1202,27 +1202,54 @@ def search_license_plate():
         if not license_plate:
             return jsonify({'success': False, 'message': 'Δεν δόθηκε πινακίδα'})
         
-        # Αναζήτηση της πιο πρόσφατης παράβασης για αυτή την πινακίδα
-        violation = Violation.query.filter_by(license_plate=license_plate)\
-                                 .order_by(Violation.created_at.desc())\
-                                 .first()
+        # Case-insensitive αναζήτηση όλων των παραβάσεων για αυτή την πινακίδα
+        violations = Violation.query.filter(
+            Violation.license_plate.ilike(f'%{license_plate}%')
+        ).order_by(Violation.created_at.desc()).limit(10).all()
         
-        if violation:
+        if violations:
+            # Πάρε στοιχεία από την πιο πρόσφατη παράβαση για αυτόματη συμπλήρωση
+            latest_violation = violations[0]
+            
+            violations_list = []
+            for v in violations:
+                # Λήψη στοιχείων τύπου παράβασης
+                violation_type = ViolationsData.query.get(v.violation_type_id)
+                violation_type_name = violation_type.description if violation_type else 'Άγνωστος τύπος'
+                
+                # Λήψη στοιχείων χρήστη
+                user = User.query.get(v.user_id)
+                officer_name = f"{user.first_name} {user.last_name}" if user else 'Άγνωστος'
+                
+                violations_list.append({
+                    'id': v.id,
+                    'violation_date': v.violation_date.strftime('%d/%m/%Y') if v.violation_date else 'Άγνωστη ημερομηνία',
+                    'violation_time': v.violation_time.strftime('%H:%M') if v.violation_time else 'Άγνωστη ώρα',
+                    'violation_type': violation_type_name,
+                    'status': v.status or 'Εκκρεμής',
+                    'officer': officer_name,
+                    'fine_amount': v.fine_amount or 0
+                })
+            
             return jsonify({
                 'success': True,
                 'found': True,
-                'data': {
-                    'vehicle_brand': violation.vehicle_brand,
-                    'vehicle_color': violation.vehicle_color, 
-                    'vehicle_type': violation.vehicle_type
+                'auto_fill_data': {
+                    'vehicle_brand': latest_violation.vehicle_brand,
+                    'vehicle_color': latest_violation.vehicle_color, 
+                    'vehicle_type': latest_violation.vehicle_type
                 },
-                'message': f'Βρέθηκαν στοιχεία για την πινακίδα {license_plate}'
+                'violations': violations_list,
+                'total_violations': len(violations_list),
+                'message': f'Βρέθηκαν {len(violations_list)} παραβάσεις για την πινακίδα {license_plate}'
             })
         else:
             return jsonify({
                 'success': True,
                 'found': False,
-                'message': f'Δεν βρέθηκαν στοιχεία για την πινακίδα {license_plate}'
+                'violations': [],
+                'total_violations': 0,
+                'message': f'Δεν βρέθηκαν παραβάσεις για την πινακίδα {license_plate}'
             })
             
     except Exception as e:
