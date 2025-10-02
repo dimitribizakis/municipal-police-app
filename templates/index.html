@@ -506,6 +506,31 @@
         </div>
     </div>
 </div>
+
+<!-- Modal για εμφάνιση παραβάσεων πινακίδας -->
+<div class="modal fade" id="violationsHistoryModal" tabindex="-1" aria-labelledby="violationsHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="violationsHistoryModalLabel">
+                    <i class="fas fa-history me-2"></i>Ιστορικό Παραβάσεων Πινακίδας
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="violationsHistoryContent">
+                    <!-- Το περιεχόμενο θα προστεθεί δυναμικά από JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                    <i class="fas fa-check me-1"></i>ΟΚ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -1018,19 +1043,24 @@
         // Initialize custom fields
         handleCustomFields();
         
-        const now = new Date();
+        // Ρύθμιση ώρας Ελλάδας (Europe/Athens timezone)
+        const now = new Date().toLocaleString("en-US", {timeZone: "Europe/Athens"});
+        const greeceTime = new Date(now);
         
         // Set current date
         const dateInput = document.getElementById('violation_date');
         if (dateInput && !dateInput.value) {
-            dateInput.value = now.toISOString().split('T')[0];
+            const year = greeceTime.getFullYear();
+            const month = String(greeceTime.getMonth() + 1).padStart(2, '0');
+            const day = String(greeceTime.getDate()).padStart(2, '0');
+            dateInput.value = `${year}-${month}-${day}`;
         }
         
         // Set current time
         const timeInput = document.getElementById('violation_time');
         if (timeInput && !timeInput.value) {
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const hours = String(greeceTime.getHours()).padStart(2, '0');
+            const minutes = String(greeceTime.getMinutes()).padStart(2, '0');
             timeInput.value = `${hours}:${minutes}`;
         }
         
@@ -1098,27 +1128,32 @@
         .then(data => {
             if (data.success) {
                 if (data.found) {
-                    // Auto-fill the form fields
-                    document.getElementById('vehicle_brand').value = data.data.vehicle_brand;
-                    document.getElementById('vehicle_color').value = data.data.vehicle_color;
-                    document.getElementById('vehicle_type').value = data.data.vehicle_type;
+                    // Auto-fill the form fields από την πιο πρόσφατη παράβαση
+                    if (data.auto_fill_data) {
+                        document.getElementById('vehicle_brand').value = data.auto_fill_data.vehicle_brand || '';
+                        document.getElementById('vehicle_color').value = data.auto_fill_data.vehicle_color || '';
+                        document.getElementById('vehicle_type').value = data.auto_fill_data.vehicle_type || '';
+                        
+                        // Highlight the filled fields
+                        ['vehicle_brand', 'vehicle_color', 'vehicle_type'].forEach(fieldId => {
+                            const field = document.getElementById(fieldId);
+                            field.classList.add('border-success');
+                            setTimeout(() => {
+                                field.classList.remove('border-success');
+                            }, 3000);
+                        });
+                    }
+                    
+                    // Εμφάνιση modal με όλες τις παραβάσεις
+                    showViolationsHistoryModal(licensePlate, data.violations, data.total_violations);
                     
                     // Show success message
                     resultDiv.innerHTML = `
                         <div class="alert alert-success alert-sm py-2">
                             <i class="fas fa-check-circle me-1"></i>
-                            ${data.message}
+                            ${data.message} - Στοιχεία συμπληρώθηκαν αυτόματα!
                         </div>
                     `;
-                    
-                    // Highlight the filled fields
-                    ['vehicle_brand', 'vehicle_color', 'vehicle_type'].forEach(fieldId => {
-                        const field = document.getElementById(fieldId);
-                        field.classList.add('border-success');
-                        setTimeout(() => {
-                            field.classList.remove('border-success');
-                        }, 3000);
-                    });
                 } else {
                     // No results found
                     resultDiv.innerHTML = `
@@ -1159,6 +1194,91 @@
                 }
             }, 5000);
         });
+    }
+
+    // Εμφάνιση modal με ιστορικό παραβάσεων
+    function showViolationsHistoryModal(licensePlate, violations, totalViolations) {
+        const modalTitle = document.getElementById('violationsHistoryModalLabel');
+        const modalContent = document.getElementById('violationsHistoryContent');
+        
+        // Ενημέρωση τίτλου
+        modalTitle.innerHTML = `<i class="fas fa-history me-2"></i>Ιστορικό Παραβάσεων - ${licensePlate}`;
+        
+        if (violations && violations.length > 0) {
+            // Δημιουργία πίνακα με παραβάσεις
+            let tableHTML = `
+                <div class="mb-3">
+                    <h6 class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Βρέθηκαν ${totalViolations} παραβάσεις για την πινακίδα <strong>${licensePlate}</strong>
+                    </h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-primary">
+                            <tr>
+                                <th><i class="fas fa-calendar me-1"></i>Ημερομηνία</th>
+                                <th><i class="fas fa-clock me-1"></i>Ώρα</th>
+                                <th><i class="fas fa-exclamation-triangle me-1"></i>Τύπος Παράβασης</th>
+                                <th><i class="fas fa-flag me-1"></i>Κατάσταση</th>
+                                <th><i class="fas fa-user-badge me-1"></i>Αστυνομικός</th>
+                                <th><i class="fas fa-euro-sign me-1"></i>Πρόστιμο</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            violations.forEach(violation => {
+                let statusBadge = '';
+                switch(violation.status?.toLowerCase()) {
+                    case 'paid':
+                    case 'πληρωμένη':
+                        statusBadge = '<span class="badge bg-success">Πληρωμένη</span>';
+                        break;
+                    case 'pending':
+                    case 'εκκρεμής':
+                        statusBadge = '<span class="badge bg-warning">Εκκρεμής</span>';
+                        break;
+                    case 'cancelled':
+                    case 'ακυρωμένη':
+                        statusBadge = '<span class="badge bg-secondary">Ακυρωμένη</span>';
+                        break;
+                    default:
+                        statusBadge = '<span class="badge bg-info">Εκκρεμής</span>';
+                }
+                
+                tableHTML += `
+                    <tr>
+                        <td>${violation.violation_date}</td>
+                        <td>${violation.violation_time}</td>
+                        <td>${violation.violation_type}</td>
+                        <td>${statusBadge}</td>
+                        <td>${violation.officer}</td>
+                        <td class="text-end">${violation.fine_amount}€</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            modalContent.innerHTML = tableHTML;
+        } else {
+            modalContent.innerHTML = `
+                <div class="text-center p-4">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Δεν βρέθηκαν παραβάσεις</h5>
+                    <p class="text-muted">Δεν υπάρχουν καταχωρημένες παραβάσεις για την πινακίδα <strong>${licensePlate}</strong></p>
+                </div>
+            `;
+        }
+        
+        // Εμφάνιση modal
+        const modal = new bootstrap.Modal(document.getElementById('violationsHistoryModal'));
+        modal.show();
     }
 
     // Helper function to show alerts
