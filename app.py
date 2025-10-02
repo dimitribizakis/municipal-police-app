@@ -1213,22 +1213,21 @@ def search_license_plate():
             
             violations_list = []
             for v in violations:
-                # Λήψη στοιχείων τύπου παράβασης
-                violation_type = ViolationsData.query.get(v.violation_type_id)
-                violation_type_name = violation_type.description if violation_type else 'Άγνωστος τύπος'
-                
                 # Λήψη στοιχείων χρήστη
-                user = User.query.get(v.user_id)
+                user = User.query.get(v.officer_id)
                 officer_name = f"{user.first_name} {user.last_name}" if user else 'Άγνωστος'
+                
+                # Λήψη στοιχείων επιλεγμένων παραβάσεων
+                selected_violations = v.get_selected_violations_list()
+                violation_description = ', '.join([str(viol_id) for viol_id in selected_violations]) if selected_violations else 'Άγνωστος τύπος'
                 
                 violations_list.append({
                     'id': v.id,
                     'violation_date': v.violation_date.strftime('%d/%m/%Y') if v.violation_date else 'Άγνωστη ημερομηνία',
                     'violation_time': v.violation_time.strftime('%H:%M') if v.violation_time else 'Άγνωστη ώρα',
-                    'violation_type': violation_type_name,
-                    'status': v.status or 'Εκκρεμής',
+                    'violation_type': violation_description,
                     'officer': officer_name,
-                    'fine_amount': v.fine_amount or 0
+                    'fine_amount': str(v.total_fine_amount) if v.total_fine_amount else '0'
                 })
             
             return jsonify({
