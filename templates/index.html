@@ -141,42 +141,22 @@
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label for="violation_date_display" class="form-label">
-                                <i class="fas fa-calendar me-1"></i>Ημερομηνία Παράβασης
+                            <label for="date" class="form-label">
+                                <i class="fas fa-calendar me-1"></i>Ημερομηνία Παράβασης *
                             </label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-calendar-day text-success"></i>
-                                </span>
-                                <input type="text" class="form-control" id="violation_date_display" 
-                                       value="{{ datetime.now().strftime('%d/%m/%Y') }}" readonly 
-                                       style="background-color: #e8f5e8; border-color: #28a745;">
-                                <span class="input-group-text text-success">
-                                    <small><i class="fas fa-check"></i> Αυτόματη</small>
-                                </span>
-                            </div>
-                            <small class="text-success">
-                                <i class="fas fa-info-circle me-1"></i>Η ημερομηνία ορίζεται αυτόματα από το σύστημα
+                            <input type="date" class="form-control" id="date" name="violation_date" required>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>Εισάγετε την ημερομηνία της παράβασης
                             </small>
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label for="violation_time_display" class="form-label">
-                                <i class="fas fa-clock me-1"></i>Ώρα Παράβασης
+                            <label for="time" class="form-label">
+                                <i class="fas fa-clock me-1"></i>Ώρα Παράβασης *
                             </label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fas fa-clock text-success"></i>
-                                </span>
-                                <input type="text" class="form-control" id="violation_time_display" 
-                                       value="{{ datetime.now().strftime('%H:%M') }}" readonly 
-                                       style="background-color: #e8f5e8; border-color: #28a745;">
-                                <span class="input-group-text text-success">
-                                    <small><i class="fas fa-check"></i> Αυτόματη</small>
-                                </span>
-                            </div>
-                            <small class="text-success">
-                                <i class="fas fa-info-circle me-1"></i>Η ώρα ορίζεται αυτόματα από το σύστημα
+                            <input type="time" class="form-control" id="time" name="violation_time" required>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>Εισάγετε την ώρα της παράβασης
                             </small>
                         </div>
                         
@@ -1043,26 +1023,7 @@
         // Initialize custom fields
         handleCustomFields();
         
-        // Ρύθμιση ώρας Ελλάδας (Europe/Athens timezone)
-        const now = new Date().toLocaleString("en-US", {timeZone: "Europe/Athens"});
-        const greeceTime = new Date(now);
-        
-        // Set current date
-        const dateInput = document.getElementById('violation_date');
-        if (dateInput && !dateInput.value) {
-            const year = greeceTime.getFullYear();
-            const month = String(greeceTime.getMonth() + 1).padStart(2, '0');
-            const day = String(greeceTime.getDate()).padStart(2, '0');
-            dateInput.value = `${year}-${month}-${day}`;
-        }
-        
-        // Set current time
-        const timeInput = document.getElementById('violation_time');
-        if (timeInput && !timeInput.value) {
-            const hours = String(greeceTime.getHours()).padStart(2, '0');
-            const minutes = String(greeceTime.getMinutes()).padStart(2, '0');
-            timeInput.value = `${hours}:${minutes}`;
-        }
+        // Τα πεδία ημερομηνίας και ώρας συμπληρώνονται μανουαλλα
         
         // Format AFM input
         const afmInput = document.getElementById('driver_afm');
