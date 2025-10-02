@@ -689,7 +689,7 @@ def view_violation(violation_id):
     violation = Violation.query.get_or_404(violation_id)
     user = User.query.get(session['user_id'])
     
-    return render_template('violation_detail.html', violation=violation, user=user)
+    return render_template('violation_detail.html', violation=violation, user=user, current_user=user)
 
 # ======================== MODULE ROUTES ========================
 
