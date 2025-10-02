@@ -295,12 +295,14 @@ class Notification(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     message = db.Column(db.Text, nullable=False)
-    type = db.Column(db.String(20), default='info')  # 'info', 'warning', 'error', 'success'
+    type = db.Column(db.String(20), default='info')  # 'info', 'warning', 'error', 'success', 'message'
     is_read = db.Column(db.Boolean, default=False)
+    related_message_id = db.Column(db.Integer, db.ForeignKey('message.id'), nullable=True)  # Σύνδεση με μήνυμα
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Σχέσεις
     user = db.relationship('User', backref='notifications', lazy=True)
+    related_message = db.relationship('Message', backref='notifications', lazy=True)
     
     @property
     def icon(self):
@@ -431,7 +433,8 @@ def get_notifications():
             'type': notification.type,
             'is_read': notification.is_read,
             'created_at': notification.created_at.isoformat(),
-            'icon': notification.icon
+            'icon': notification.icon,
+            'related_message_id': notification.related_message_id
         })
     
     return jsonify({
@@ -473,19 +476,59 @@ def get_unread_messages():
     user_id = session['user_id']
     
     # Υπολογισμός μη αναγνωσμένων μηνυμάτων
-    unread_count = Message.query.filter_by(recipient_id=user_id, is_read=False).count()
+    unread_count = MessageRecipient.query.filter_by(recipient_id=user_id, is_read=False).count()
     
     return jsonify({
         'unread_count': unread_count
     })
 
-def create_notification(user_id, title, message, notification_type='info'):
+@app.route('/api/sync-message-notifications', methods=['POST'])
+@login_required
+def sync_message_notifications():
+    """API endpoint για δημιουργία notifications για υπάρχοντα μη αναγνωσμένα μηνύματα"""
+    user_id = session['user_id']
+    
+    # Βρες όλα τα μη αναγνωσμένα μηνύματα που δεν έχουν notification
+    unread_messages = db.session.query(Message, MessageRecipient).join(
+        MessageRecipient, Message.id == MessageRecipient.message_id
+    ).filter(
+        MessageRecipient.recipient_id == user_id,
+        MessageRecipient.is_read == False
+    ).all()
+    
+    notifications_created = 0
+    
+    for message, recipient in unread_messages:
+        # Έλεγχος αν υπάρχει ήδη notification για αυτό το μήνυμα
+        existing_notification = Notification.query.filter_by(
+            user_id=user_id,
+            related_message_id=message.id
+        ).first()
+        
+        if not existing_notification:
+            # Δημιουργία notification
+            create_notification(
+                user_id=user_id,
+                title="Νέο Μήνυμα",
+                message=f"Έχετε λάβει νέο μήνυμα από {message.sender.full_name}: {message.subject}",
+                notification_type='message',
+                related_message_id=message.id
+            )
+            notifications_created += 1
+    
+    return jsonify({
+        'success': True,
+        'notifications_created': notifications_created
+    })
+
+def create_notification(user_id, title, message, notification_type='info', related_message_id=None):
     """Helper function για δημιουργία ειδοποίησης"""
     notification = Notification(
         user_id=user_id,
         title=title,
         message=message,
-        type=notification_type
+        type=notification_type,
+        related_message_id=related_message_id
     )
     db.session.add(notification)
     db.session.commit()
@@ -719,6 +762,16 @@ def new_message():
                 recipient_id=int(recipient_id)
             )
             db.session.add(recipient)
+            
+            # Δημιουργία ειδοποίησης για το νέο μήνυμα
+            sender_name = User.query.get(session['user_id']).full_name
+            create_notification(
+                user_id=int(recipient_id),
+                title="Νέο Μήνυμα",
+                message=f"Έχετε λάβει νέο μήνυμα από {sender_name}: {subject}",
+                notification_type='message',
+                related_message_id=message.id
+            )
         
         db.session.commit()
         flash('Το μήνυμα στάλθηκε επιτυχώς!', 'success')
@@ -757,6 +810,17 @@ def view_message(message_id):
     if message_recipient and not message_recipient.is_read:
         message_recipient.is_read = True
         message_recipient.read_at = datetime.utcnow()
+        
+        # Σήμανση της αντίστοιχης ειδοποίησης ως διαβασμένη
+        notification = Notification.query.filter_by(
+            user_id=user_id,
+            related_message_id=message_id,
+            is_read=False
+        ).first()
+        
+        if notification:
+            notification.is_read = True
+        
         db.session.commit()
     
     return render_template('messages/view_message.html', 
