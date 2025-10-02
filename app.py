@@ -939,6 +939,111 @@ def admin_reports():
     """Αναφορές και στατιστικά"""
     return render_template('admin/reports.html')
 
+@app.route('/admin/fines-management')
+@login_required
+def admin_fines_management():
+    """Διαχείριση Προστίμων - Κεντρική σελίδα"""
+    user = User.query.get(session['user_id'])
+    if not user or not user.can_view_admin_dashboard():
+        flash('Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    violations_data = ViolationsData.query.filter_by(is_active=True).order_by(ViolationsData.article, ViolationsData.article_paragraph).all()
+    return render_template('admin/fines_management.html', violations_data=violations_data)
+
+@app.route('/admin/fines-management/edit/<int:violation_id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_fine(violation_id):
+    """Επεξεργασία στοιχείων παράβασης/προστίμου"""
+    user = User.query.get(session['user_id'])
+    if not user or not user.can_view_admin_dashboard():
+        flash('Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.', 'error')
+        return redirect(url_for('dashboard'))
+        
+    violation_data = ViolationsData.query.get_or_404(violation_id)
+    
+    if request.method == 'POST':
+        try:
+            # Ενημέρωση όλων των πεδίων
+            violation_data.description = request.form.get('description', '').strip()
+            violation_data.paragraph = request.form.get('paragraph', '').strip()
+            violation_data.article = request.form.get('article', '').strip()
+            violation_data.article_paragraph = request.form.get('article_paragraph', '').strip()
+            
+            # Πρόστιμα
+            violation_data.fine_cars = Decimal(request.form.get('fine_cars', '0') or '0')
+            violation_data.fine_motorcycles = Decimal(request.form.get('fine_motorcycles', '0') or '0') if request.form.get('fine_motorcycles') else None
+            violation_data.fine_trucks = Decimal(request.form.get('fine_trucks', '0') or '0') if request.form.get('fine_trucks') else None
+            violation_data.half_fine_motorcycles = 'half_fine_motorcycles' in request.form
+            
+            # Αφαιρέσεις στοιχείων
+            violation_data.remove_circulation_elements = 'remove_circulation_elements' in request.form
+            violation_data.circulation_removal_days = int(request.form.get('circulation_removal_days', '0') or '0') if request.form.get('circulation_removal_days') else None
+            
+            # Αφαιρέσεις άδειας κυκλοφορίας
+            violation_data.remove_circulation_license = 'remove_circulation_license' in request.form
+            violation_data.circulation_license_removal_days = int(request.form.get('circulation_license_removal_days', '0') or '0') if request.form.get('circulation_license_removal_days') else None
+            
+            # Αφαιρέσεις άδειας οδήγησης
+            violation_data.remove_driving_license = 'remove_driving_license' in request.form
+            violation_data.driving_license_removal_days = int(request.form.get('driving_license_removal_days', '0') or '0') if request.form.get('driving_license_removal_days') else None
+            
+            # Ειδική διάταξη στάθμευσης
+            violation_data.parking_special_provision = 'parking_special_provision' in request.form
+            
+            violation_data.updated_at = datetime.utcnow()
+            
+            db.session.commit()
+            flash('Τα στοιχεία του προστίμου ενημερώθηκαν επιτυχώς!', 'success')
+            return redirect(url_for('admin_fines_management'))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f'Error updating fine data: {str(e)}', exc_info=True)
+            flash(f'Σφάλμα κατά την ενημέρωση: {str(e)}', 'error')
+    
+    return render_template('admin/edit_fine.html', violation_data=violation_data)
+
+@app.route('/admin/fines-management/new', methods=['GET', 'POST'])
+@login_required
+def admin_new_fine():
+    """Δημιουργία νέου τύπου παράβασης/προστίμου"""
+    user = User.query.get(session['user_id'])
+    if not user or not user.can_view_admin_dashboard():
+        flash('Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.', 'error')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        try:
+            new_violation = ViolationsData(
+                description=request.form.get('description', '').strip(),
+                paragraph=request.form.get('paragraph', '').strip(),
+                article=request.form.get('article', '').strip(),
+                article_paragraph=request.form.get('article_paragraph', '').strip(),
+                fine_cars=Decimal(request.form.get('fine_cars', '0') or '0'),
+                fine_motorcycles=Decimal(request.form.get('fine_motorcycles', '0') or '0') if request.form.get('fine_motorcycles') else None,
+                fine_trucks=Decimal(request.form.get('fine_trucks', '0') or '0') if request.form.get('fine_trucks') else None,
+                half_fine_motorcycles='half_fine_motorcycles' in request.form,
+                remove_circulation_elements='remove_circulation_elements' in request.form,
+                circulation_removal_days=int(request.form.get('circulation_removal_days', '0') or '0') if request.form.get('circulation_removal_days') else None,
+                remove_circulation_license='remove_circulation_license' in request.form,
+                circulation_license_removal_days=int(request.form.get('circulation_license_removal_days', '0') or '0') if request.form.get('circulation_license_removal_days') else None,
+                remove_driving_license='remove_driving_license' in request.form,
+                driving_license_removal_days=int(request.form.get('driving_license_removal_days', '0') or '0') if request.form.get('driving_license_removal_days') else None,
+                parking_special_provision='parking_special_provision' in request.form
+            )
+            
+            db.session.add(new_violation)
+            db.session.commit()
+            flash('Ο νέος τύπος παράβασης δημιουργήθηκε επιτυχώς!', 'success')
+            return redirect(url_for('admin_fines_management'))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f'Error creating new fine: {str(e)}', exc_info=True)
+            flash(f'Σφάλμα κατά τη δημιουργία: {str(e)}', 'error')
+    
+    return render_template('admin/new_fine.html')
+
 # ======================== MISSING ROUTES FIX ========================
 
 @app.route('/violations/new', methods=['GET', 'POST'])
