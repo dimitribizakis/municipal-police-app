@@ -390,6 +390,7 @@ def login():
             session['user_id'] = user.id
             session['username'] = user.username
             session['user_role'] = user.role
+            session['full_name'] = user.full_name
             session.permanent = True
             
             flash(f'Καλώς ήρθατε, {user.full_name}!', 'success')
