@@ -1,0 +1,248 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Επεξεργασία Προστίμου - Δημοτική Αστυνομία{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="text-primary">
+                    <i class="fas fa-edit me-2"></i>Επεξεργασία Προστίμου
+                </h2>
+                <p class="text-muted">{{ violation_data.display_name }}</p>
+            </div>
+            <a href="{{ url_for('admin_fines_management') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Επιστροφή
+            </a>
+        </div>
+    </div>
+</div>
+
+<form method="POST">
+    <div class="row">
+        <!-- Βασικές Πληροφορίες -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Βασικές Πληροφορίες</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Περιγραφή Παράβασης *</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required>{{ violation_data.description }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="paragraph" class="form-label">Παράγραφος/Σχόλια</label>
+                        <input type="text" class="form-control" id="paragraph" name="paragraph" 
+                               value="{{ violation_data.paragraph or '' }}">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="article" class="form-label">Άρθρο ΚΟΚ</label>
+                            <input type="text" class="form-control" id="article" name="article" 
+                                   value="{{ violation_data.article or '' }}" placeholder="π.χ. 7, 38, 49">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="article_paragraph" class="form-label">Παράγραφος Άρθρου</label>
+                            <input type="text" class="form-control" id="article_paragraph" name="article_paragraph" 
+                                   value="{{ violation_data.article_paragraph or '' }}" placeholder="π.χ. 2β, 3η, 4">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Πρόστιμα -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-euro-sign me-2"></i>Ποσά Προστίμων</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="fine_cars" class="form-label">Πρόστιμο Αυτοκινήτων (€) *</label>
+                        <input type="number" step="0.01" class="form-control" id="fine_cars" name="fine_cars" 
+                               value="{{ violation_data.fine_cars }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="fine_motorcycles" class="form-label">Πρόστιμο Μοτοσικλετών (€)</label>
+                        <input type="number" step="0.01" class="form-control" id="fine_motorcycles" name="fine_motorcycles" 
+                               value="{{ violation_data.fine_motorcycles or '' }}" 
+                               placeholder="Αν είναι κενό, θα χρησιμοποιηθεί το πρόστιμο αυτοκινήτων">
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="half_fine_motorcycles" 
+                                   name="half_fine_motorcycles" {{ 'checked' if violation_data.half_fine_motorcycles }}>
+                            <label class="form-check-label" for="half_fine_motorcycles">
+                                Μισό πρόστιμο για δίκυκλα
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="fine_trucks" class="form-label">Πρόστιμο Φορτηγών (€)</label>
+                        <input type="number" step="0.01" class="form-control" id="fine_trucks" name="fine_trucks" 
+                               value="{{ violation_data.fine_trucks or '' }}" 
+                               placeholder="Αν είναι κενό, θα χρησιμοποιηθεί το πρόστιμο αυτοκινήτων">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Αφαιρέσεις -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-ban me-2"></i>Αφαιρέσεις και Κυρώσεις</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Αφαίρεση Στοιχείων Κυκλοφορίας -->
+                        <div class="col-md-4">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <strong>Στοιχεία Κυκλοφορίας</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="remove_circulation_elements" 
+                                               name="remove_circulation_elements" {{ 'checked' if violation_data.remove_circulation_elements }}>
+                                        <label class="form-check-label" for="remove_circulation_elements">
+                                            Αφαίρεση στοιχείων κυκλοφορίας
+                                        </label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="circulation_removal_days" class="form-label">Ημέρες αφαίρεσης</label>
+                                        <select class="form-control" id="circulation_removal_days" name="circulation_removal_days">
+                                            <option value="">Μη καθορισμένο</option>
+                                            <option value="10" {{ 'selected' if violation_data.circulation_removal_days == 10 }}>10 ημέρες</option>
+                                            <option value="40" {{ 'selected' if violation_data.circulation_removal_days == 40 }}>40 ημέρες</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Αφαίρεση Άδειας Κυκλοφορίας -->
+                        <div class="col-md-4">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <strong>Άδεια Κυκλοφορίας</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="remove_circulation_license" 
+                                               name="remove_circulation_license" {{ 'checked' if violation_data.remove_circulation_license }}>
+                                        <label class="form-check-label" for="remove_circulation_license">
+                                            Αφαίρεση άδειας κυκλοφορίας
+                                        </label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="circulation_license_removal_days" class="form-label">Ημέρες αφαίρεσης</label>
+                                        <input type="number" class="form-control" id="circulation_license_removal_days" 
+                                               name="circulation_license_removal_days" 
+                                               value="{{ violation_data.circulation_license_removal_days or '' }}" min="1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Αφαίρεση Άδειας Οδήγησης -->
+                        <div class="col-md-4">
+                            <div class="card border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <strong>Άδεια Οδήγησης</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="remove_driving_license" 
+                                               name="remove_driving_license" {{ 'checked' if violation_data.remove_driving_license }}>
+                                        <label class="form-check-label" for="remove_driving_license">
+                                            Αφαίρεση άδειας οδήγησης
+                                        </label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="driving_license_removal_days" class="form-label">Ημέρες αφαίρεσης</label>
+                                        <input type="number" class="form-control" id="driving_license_removal_days" 
+                                               name="driving_license_removal_days" 
+                                               value="{{ violation_data.driving_license_removal_days or '' }}" min="1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Ειδική Διάταξη -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card border-secondary">
+                                <div class="card-body">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="parking_special_provision" 
+                                               name="parking_special_provision" {{ 'checked' if violation_data.parking_special_provision }}>
+                                        <label class="form-check-label" for="parking_special_provision">
+                                            <strong>Ειδική διάταξη στάθμευσης (Άρθρο 7)</strong>
+                                            <br><small class="text-muted">Αφαίρεση στοιχείων αντί άδειας οδήγησης</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Κουμπιά Ενεργειών -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Αποθήκευση Αλλαγών
+                            </button>
+                            <a href="{{ url_for('admin_fines_management') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Άκυρο
+                            </a>
+                        </div>
+                        <div>
+                            <small class="text-muted">
+                                Τελευταία ενημέρωση: {{ violation_data.updated_at.strftime('%d/%m/%Y %H:%M') if violation_data.updated_at }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+// Ενεργοποίηση/απενεργοποίηση πεδίων ημερών βάσει checkbox
+document.getElementById('remove_circulation_elements').addEventListener('change', function() {
+    document.getElementById('circulation_removal_days').disabled = !this.checked;
+});
+
+document.getElementById('remove_circulation_license').addEventListener('change', function() {
+    document.getElementById('circulation_license_removal_days').disabled = !this.checked;
+});
+
+document.getElementById('remove_driving_license').addEventListener('change', function() {
+    document.getElementById('driving_license_removal_days').disabled = !this.checked;
+});
+
+// Αρχική κατάσταση
+document.getElementById('circulation_removal_days').disabled = !document.getElementById('remove_circulation_elements').checked;
+document.getElementById('circulation_license_removal_days').disabled = !document.getElementById('remove_circulation_license').checked;
+document.getElementById('driving_license_removal_days').disabled = !document.getElementById('remove_driving_license').checked;
+</script>
+
+{% endblock %}

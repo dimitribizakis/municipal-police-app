@@ -1,0 +1,441 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Αναλυτική Προβολή Παράβασης #{{ violation.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Επικεφαλίδα -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-primary shadow-sm">
+                <div class="card-body text-center py-4" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                    <div class="d-flex justify-content-center align-items-center mb-3">
+                        <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Λογότυπο" style="height: 80px; margin-right: 20px;">
+                        <div>
+                            <h3 class="mb-1 text-primary fw-bold">ΔΗΜΟΤΙΚΗ ΑΣΤΥΝΟΜΙΑ</h3>
+                            <h5 class="text-muted">ΑΝΑΛΥΤΙΚΗ ΠΡΟΒΟΛΗ ΠΑΡΑΒΑΣΗΣ</h5>
+                            <p class="mb-0"><strong>ID:</strong> #{{ violation.id }} | <strong>Ημ/νία:</strong> {{ violation.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="btn-group">
+                    <a href="{{ url_for('view_violations') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>Επιστροφή
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-home me-1"></i>Κεντρική
+                    </a>
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('edit_violation', violation_id=violation.id) }}" class="btn btn-warning">
+                        <i class="fas fa-edit me-1"></i>Επεξεργασία
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="text-muted">
+                    <i class="fas fa-user me-1"></i>{{ current_user.first_name }} {{ current_user.last_name }}
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm ms-2">
+                        <i class="fas fa-sign-out-alt me-1"></i>Αποσύνδεση
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Κυρίως Περιεχόμενο -->
+        <div class="col-lg-8">
+            <!-- Στοιχεία Οχήματος -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-car me-2"></i>Στοιχεία Οχήματος</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Αριθμός Κυκλοφορίας:</strong><br>
+                                <span class="badge bg-info fs-6 mt-1">{{ violation.license_plate }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Τύπος Οχήματος:</strong><br>
+                                <span class="badge bg-secondary fs-6 mt-1">{{ violation.vehicle_type }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Μάρκα:</strong><br>
+                                {{ violation.vehicle_brand or 'Δεν καταγράφηκε' }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Χρώμα:</strong><br>
+                                {{ violation.vehicle_color or 'Δεν καταγράφηκε' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Στοιχεία Παράβασης -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Στοιχεία Παράβασης</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Ημερομηνία:</strong><br>
+                                {{ violation.violation_date.strftime('%d/%m/%Y') }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Ώρα:</strong><br>
+                                {{ violation.violation_time.strftime('%H:%M') }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Αστυνομικός:</strong><br>
+                                {{ violation.officer.first_name }} {{ violation.officer.last_name }}
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Τοποθεσία:</strong><br>
+                                {{ violation.street }}{% if violation.street_number %} {{ violation.street_number }}{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Παραβάσεις -->
+                    <h6 class="text-primary mb-3"><i class="fas fa-list me-2"></i>Καταγεγραμμένες Παραβάσεις:</h6>
+                    {% if violation.fine_breakdown %}
+                        {% set fine_details = violation.get_fine_breakdown_dict() %}
+                        {% for detail in fine_details %}
+                        <div class="alert alert-warning mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="alert-heading mb-1">{{ detail.description }}</h6>
+                                    {% if detail.paragraph %}
+                                    <small class="text-primary fw-bold">{{ detail.paragraph }}</small><br>
+                                    {% endif %}
+                                    {% if detail.article %}
+                                    <small class="text-muted">{{ detail.article }}</small>
+                                    {% endif %}
+                                </div>
+                                <span class="badge bg-danger fs-6 ms-3">{{ detail.amount }}€</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Δεν βρέθηκαν αναλυτικά στοιχεία παραβάσεων.
+                        </div>
+                    {% endif %}
+
+                    <!-- Συνολικό Ποσό -->
+                    {% if violation.total_fine_amount %}
+                    <div class="alert alert-success">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold"><i class="fas fa-calculator me-2"></i>Συνολικό Πρόστιμο:</span>
+                            <span class="badge bg-success fs-4">{{ violation.total_fine_amount }}€</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Αφαίρεση Στοιχείων -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Αφαίρεση Στοιχείων</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="form-check border p-3 rounded {% if violation.plates_removed %}bg-danger text-white{% else %}bg-light{% endif %}">
+                                <input class="form-check-input" type="checkbox" disabled {% if violation.plates_removed %}checked{% endif %}>
+                                <label class="form-check-label fw-bold">
+                                    <i class="fas fa-id-card-alt me-2"></i>Πινακίδες
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check border p-3 rounded {% if violation.license_removed %}bg-danger text-white{% else %}bg-light{% endif %}">
+                                <input class="form-check-input" type="checkbox" disabled {% if violation.license_removed %}checked{% endif %}>
+                                <label class="form-check-label fw-bold">
+                                    <i class="fas fa-id-card me-2"></i>Άδεια Οδήγησης
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check border p-3 rounded {% if violation.registration_removed %}bg-danger text-white{% else %}bg-light{% endif %}">
+                                <input class="form-check-input" type="checkbox" disabled {% if violation.registration_removed %}checked{% endif %}>
+                                <label class="form-check-label fw-bold">
+                                    <i class="fas fa-file-alt me-2"></i>Άδεια Κυκλοφορίας
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Στοιχεία Οδηγού -->
+            {% if violation.driver_last_name or violation.driver_first_name or violation.driver_father_name or violation.driver_afm %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-user me-2"></i>Στοιχεία Οδηγού/Παραβάτη</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Επώνυμο:</strong><br>
+                                {{ violation.driver_last_name or 'Δεν καταγράφηκε' }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Όνομα:</strong><br>
+                                {{ violation.driver_first_name or 'Δεν καταγράφηκε' }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">Όνομα Πατρός:</strong><br>
+                                {{ violation.driver_father_name or 'Δεν καταγράφηκε' }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="bg-light p-3 rounded">
+                                <strong class="text-primary">ΑΦΜ:</strong><br>
+                                {{ violation.driver_afm or 'Δεν καταγράφηκε' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar με Εικόνες -->
+        <div class="col-lg-4">
+            <!-- Φωτογραφία Οχήματος -->
+            {% if violation.photo_filename %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-camera me-2"></i>Φωτογραφία Οχήματος</h5>
+                </div>
+                <div class="card-body text-center p-3">
+                    <div class="position-relative">
+                        <img src="{{ url_for('static', filename='uploads/' + violation.photo_filename) }}" 
+                             class="img-fluid rounded shadow-sm mb-2" 
+                             alt="Φωτογραφία οχήματος"
+                             style="max-height: 300px; cursor: pointer;"
+                             onclick="showImageModal(this.src, 'Φωτογραφία Οχήματος')">
+                        <div class="position-absolute top-0 end-0 m-2">
+                            <span class="badge bg-success">
+                                <i class="fas fa-search-plus"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <small class="text-muted d-block">
+                        <i class="fas fa-mouse-pointer me-1"></i>Κάντε κλικ για μεγέθυνση
+                    </small>
+                </div>
+            </div>
+            {% else %}
+            <div class="card mb-4 shadow-sm border-secondary">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-camera me-2"></i>Φωτογραφία Οχήματος</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="py-4">
+                        <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Δεν υπάρχει φωτογραφία</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Υπογραφή Οδηγού -->
+            {% if violation.driver_signature %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-purple text-white" style="background-color: #6f42c1 !important;">
+                    <h5 class="mb-0"><i class="fas fa-signature me-2"></i>Υπογραφή Οδηγού</h5>
+                </div>
+                <div class="card-body text-center p-3">
+                    <div class="bg-white border rounded p-2 mb-2">
+                        <img src="{{ violation.driver_signature }}" 
+                             class="img-fluid rounded" 
+                             alt="Υπογραφή οδηγού"
+                             style="max-height: 150px; cursor: pointer;"
+                             onclick="showImageModal(this.src, 'Υπογραφή Οδηγού')">
+                    </div>
+                    <small class="text-muted d-block">
+                        <i class="fas fa-mouse-pointer me-1"></i>Κάντε κλικ για μεγέθυνση
+                    </small>
+                </div>
+            </div>
+            {% else %}
+            <div class="card mb-4 shadow-sm border-secondary">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-signature me-2"></i>Υπογραφή Οδηγού</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="py-4">
+                        <i class="fas fa-signature fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Δεν υπάρχει υπογραφή</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Πληροφορίες Συστήματος -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Πληροφορίες</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong class="text-primary">Καταχωρήθηκε:</strong><br>
+                        <small>{{ violation.created_at.strftime('%d/%m/%Y στις %H:%M') }}</small>
+                    </div>
+                    {% if violation.updated_at and violation.updated_at != violation.created_at %}
+                    <div class="mb-3">
+                        <strong class="text-primary">Τελευταία ενημέρωση:</strong><br>
+                        <small>{{ violation.updated_at.strftime('%d/%m/%Y στις %H:%M') }}</small>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <strong class="text-primary">ID Παράβασης:</strong><br>
+                        <code class="bg-light p-1 rounded">#{{ violation.id }}</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal για μεγέθυνση εικόνων -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalTitle">Προβολή Εικόνας</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" class="img-fluid rounded" alt="Εικόνα">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Κλείσιμο</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+function showImageModal(imageSrc, title) {
+    document.getElementById('modalImage').src = imageSrc;
+    document.getElementById('imageModalTitle').textContent = title || 'Προβολή Εικόνας';
+    const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+    imageModal.show();
+}
+
+// Error handling για εικόνες που δεν φορτώνουν
+document.addEventListener('DOMContentLoaded', function() {
+    const images = document.querySelectorAll('img[src*="uploads/"]');
+    images.forEach(function(img) {
+        img.onerror = function() {
+            this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkVpa8OzbmEgw7Rjace/4bOydXBhRG1bKe4gPC90ZXh0Pjwvc3ZnPg==';
+            this.alt = 'Η εικόνα δεν μπόρεσε να φορτώσει';
+            this.style.opacity = '0.5';
+        };
+    });
+});
+</script>
+
+<!-- Custom CSS -->
+<style>
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card img {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card img:hover {
+    transform: scale(1.02);
+}
+
+.badge.fs-6 {
+    font-size: 1rem !important;
+    padding: 0.5rem 0.75rem;
+}
+
+.badge.fs-4 {
+    font-size: 1.5rem !important;
+    padding: 0.75rem 1rem;
+}
+
+.form-check-input:disabled {
+    opacity: 0.7;
+}
+
+.alert-warning {
+    border-left: 4px solid #ffc107;
+}
+
+.alert-info {
+    border-left: 4px solid #0dcaf0;
+}
+
+.alert-success {
+    border-left: 4px solid #198754;
+}
+
+.position-relative .badge {
+    font-size: 0.75rem;
+}
+
+code {
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .btn-group {
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        flex: 1;
+    }
+}
+</style>
+{% endblock %}

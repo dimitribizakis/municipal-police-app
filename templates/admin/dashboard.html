@@ -1,0 +1,202 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Admin Dashboard - Δημοτική Αστυνομία{% endblock %}
+
+{% block content %}
+<!-- Navigation Header -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <a href="{{ url_for('index') }}" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-arrow-left me-1"></i>Επιστροφή στην Κεντρική
+                </a>
+                <small class="text-muted">
+                    <i class="fas fa-user-shield me-1"></i>Admin: 
+                    {% if current_user %}
+                        {{ current_user.first_name }} {{ current_user.last_name }}
+                    {% else %}
+                        Διαχειριστής
+                    {% endif %}
+                </small>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
+                <i class="fas fa-sign-out-alt me-1"></i>Αποσύνδεση
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="text-primary">
+            <i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard
+        </h2>
+        <p class="text-muted">Κεντρικό πάνελ διαχείρισης συστήματος</p>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">{{ total_users }}</h3>
+                        <p class="mb-0">Ενεργοί Χρήστες</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">{{ total_violations }}</h3>
+                        <p class="mb-0">Συνολικές Παραβάσεις</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h3 class="mb-0">{{ today_violations }}</h3>
+                        <p class="mb-0">Σήμερα</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-calendar-day fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>Γρήγορες Ενέργειες
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-info w-100">
+                            <i class="fas fa-users-cog fa-2x d-block mb-2"></i>
+                            Διαχείριση Χρηστών
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin_violation_types') }}" class="btn btn-success w-100">
+                            <i class="fas fa-gavel fa-2x d-block mb-2"></i>
+                            Τύποι Παραβάσεων
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin_violations') }}" class="btn btn-warning w-100">
+                            <i class="fas fa-edit fa-2x d-block mb-2"></i>
+                            Εκθέσεις Παραβάσεων
+                        </a>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <a href="{{ url_for('admin_reports') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-chart-bar fa-2x d-block mb-2"></i>
+                            Αναφορές & Στατιστικά
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Recent Violations -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock me-2"></i>Πρόσφατες Παραβάσεις
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_violations %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Πινακίδα</th>
+                                <th>Ημερομηνία</th>
+                                <th>Ώρα</th>
+                                <th>Τοποθεσία</th>
+                                <th>Αστυνομικός</th>
+                                <th>Ενέργειες</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for violation in recent_violations %}
+                            <tr>
+                                <td><span class="badge bg-primary">#{{ violation.id }}</span></td>
+                                <td><strong>{{ violation.license_plate }}</strong></td>
+                                <td>{{ violation.violation_date.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ violation.violation_time.strftime('%H:%M') }}</td>
+                                <td>{{ violation.street }} {{ violation.street_number }}</td>
+                                <td>{{ violation.officer.full_name }}</td>
+                                <td>
+                                    <a href="{{ url_for('view_violation', violation_id=violation.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('edit_violation', violation_id=violation.id) }}" 
+                                       class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('admin_violations') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-1"></i>Προβολή Όλων των Παραβάσεων
+                    </a>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Δεν υπάρχουν πρόσφατες παραβάσεις</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

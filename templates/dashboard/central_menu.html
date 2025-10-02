@@ -1,0 +1,135 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Κεντρικό Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Καλωσόρισμα -->
+    <div class="row">
+        <div class="col-12">
+            <div class="jumbotron jumbotron-fluid bg-primary text-white">
+                <div class="container">
+                    <h3 class="mb-1">Καλώς ήρθατε, {{ user.full_name }}!</h3>
+                    <p class="mb-0">{{ user.role_display }} - Σύστημα Διαχείρισης Δημοτικής Αστυνομίας v3.0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Γρήγορες Ενέργειες - Μετακίνηση στην κορυφή -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="mb-3">
+                <i class="fas fa-bolt mr-2"></i>
+                Γρήγορες Ενέργειες
+            </h3>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <a href="{{ url_for('new_message') }}" class="btn btn-outline-danger btn-block mb-2 p-3">
+                <i class="fas fa-pen fa-lg mr-2"></i>
+                <strong>Νέο Μήνυμα</strong>
+            </a>
+        </div>
+    </div>
+
+    <!-- Κεντρικό Μενού Λειτουργιών -->
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-th-large mr-2"></i>
+                Λειτουργίες Συστήματος
+            </h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- ΚΟΚ -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-car fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">ΚΟΚ</h5>
+                    <p class="card-text">Κώδικας Οδικής Κυκλοφορίας<br>Καταγραφή παραβάσεων</p>
+                    <a href="{{ url_for('kok_module') }}" class="btn btn-primary">
+                        <i class="fas fa-arrow-right mr-2"></i>Είσοδος
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Έλεγχος Καταστημάτων -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-store fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">Έλεγχος Καταστημάτων</h5>
+                    <p class="card-text">Έλεγχος αδειών και συμμόρφωσης καταστημάτων</p>
+                    <a href="{{ url_for('elegxos_module') }}" class="btn btn-success">
+                        <i class="fas fa-arrow-right mr-2"></i>Είσοδος
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Επιδόσεις Εγγράφων -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-alt fa-3x text-info mb-3"></i>
+                    <h5 class="card-title">Επιδόσεις Εγγράφων</h5>
+                    <p class="card-text">Διαχείριση και παρακολούθηση επιδόσεων</p>
+                    <a href="{{ url_for('epidoseis_module') }}" class="btn btn-info">
+                        <i class="fas fa-arrow-right mr-2"></i>Είσοδος
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Αναφορές/Καταγγελίες -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-circle fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">Αναφορές/Καταγγελίες</h5>
+                    <p class="card-text">Διαχείριση αναφορών και καταγγελιών πολιτών</p>
+                    <a href="{{ url_for('anafores_module') }}" class="btn btn-warning">
+                        <i class="fas fa-arrow-right mr-2"></i>Είσοδος
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Πληροφορίες Χρήστη -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-circle mr-2"></i>
+                        Στοιχεία Χρήστη
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Όνομα:</strong> {{ user.first_name }} {{ user.last_name }}</p>
+                            <p><strong>Βαθμός:</strong> {{ user.rank }}</p>
+                            <p><strong>Ρόλος:</strong> {{ user.role_display }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Username:</strong> {{ user.username }}</p>
+                            <p><strong>Email:</strong> {{ user.email }}</p>
+                            <p><strong>Μέλος από:</strong> {{ user.created_at.strftime('%d/%m/%Y') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

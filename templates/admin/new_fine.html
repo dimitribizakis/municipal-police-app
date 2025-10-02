@@ -1,0 +1,305 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Νέος Τύπος Παράβασης - Δημοτική Αστυνομία{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="text-success">
+                    <i class="fas fa-plus me-2"></i>Νέος Τύπος Παράβασης
+                </h2>
+                <p class="text-muted">Δημιουργία νέου τύπου παράβασης με πρόστιμα και κυρώσεις</p>
+            </div>
+            <a href="{{ url_for('admin_fines_management') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Επιστροφή
+            </a>
+        </div>
+    </div>
+</div>
+
+<form method="POST">
+    <div class="row">
+        <!-- Βασικές Πληροφορίες -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Βασικές Πληροφορίες</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Περιγραφή Παράβασης *</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required 
+                                  placeholder="π.χ. Παραβίαση σήματος STOP"></textarea>
+                        <div class="form-text">Συμπληρώστε μια σαφή και περιεκτική περιγραφή της παράβασης</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="paragraph" class="form-label">Παράγραφος/Σχόλια</label>
+                        <input type="text" class="form-control" id="paragraph" name="paragraph" 
+                               placeholder="Επιπλέον σχόλια ή διευκρινίσεις">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="article" class="form-label">Άρθρο ΚΟΚ</label>
+                            <input type="text" class="form-control" id="article" name="article" 
+                                   placeholder="π.χ. 7, 38, 49">
+                            <div class="form-text">Μόνο αριθμός άρθρου</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="article_paragraph" class="form-label">Παράγραφος Άρθρου</label>
+                            <input type="text" class="form-control" id="article_paragraph" name="article_paragraph" 
+                                   placeholder="π.χ. 2β, 3η, 4">
+                            <div class="form-text">Παράγραφος του άρθρου</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Πρόστιμα -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-euro-sign me-2"></i>Ποσά Προστίμων</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="fine_cars" class="form-label">Πρόστιμο Αυτοκινήτων (€) *</label>
+                        <input type="number" step="0.01" class="form-control" id="fine_cars" name="fine_cars" 
+                               placeholder="π.χ. 200.00" required>
+                        <div class="form-text">Υποχρεωτικό πεδίο - βασικό ποσό προστίμου</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="fine_motorcycles" class="form-label">Πρόστιμο Μοτοσικλετών (€)</label>
+                        <input type="number" step="0.01" class="form-control" id="fine_motorcycles" name="fine_motorcycles" 
+                               placeholder="Αν είναι κενό, θα χρησιμοποιηθεί το πρόστιμο αυτοκινήτων">
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="half_fine_motorcycles" 
+                                   name="half_fine_motorcycles">
+                            <label class="form-check-label" for="half_fine_motorcycles">
+                                Μισό πρόστιμο για δίκυκλα
+                            </label>
+                        </div>
+                        <div class="form-text">Ειδικό πρόστιμο για μοτοσικλέτες και δίκυκλα</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="fine_trucks" class="form-label">Πρόστιμο Φορτηγών (€)</label>
+                        <input type="number" step="0.01" class="form-control" id="fine_trucks" name="fine_trucks" 
+                               placeholder="Αν είναι κενό, θα χρησιμοποιηθεί το πρόστιμο αυτοκινήτων">
+                        <div class="form-text">Ειδικό πρόστιμο για φορτηγά και λεωφορεία</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Αφαιρέσεις -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-ban me-2"></i>Αφαιρέσεις και Κυρώσεις</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Οδηγίες:</strong> Επιλέξτε τις κυρώσεις που εφαρμόζονται μαζί με το πρόστιμο για αυτή την παράβαση.
+                    </div>
+                    
+                    <div class="row">
+                        <!-- Αφαίρεση Στοιχείων Κυκλοφορίας -->
+                        <div class="col-md-4">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <strong>Στοιχεία Κυκλοφορίας</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="remove_circulation_elements" 
+                                               name="remove_circulation_elements">
+                                        <label class="form-check-label" for="remove_circulation_elements">
+                                            Αφαίρεση στοιχείων κυκλοφορίας
+                                        </label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="circulation_removal_days" class="form-label">Ημέρες αφαίρεσης</label>
+                                        <select class="form-control" id="circulation_removal_days" name="circulation_removal_days" disabled>
+                                            <option value="">Μη καθορισμένο</option>
+                                            <option value="10">10 ημέρες</option>
+                                            <option value="40">40 ημέρες</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Αφαίρεση Άδειας Κυκλοφορίας -->
+                        <div class="col-md-4">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <strong>Άδεια Κυκλοφορίας</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="remove_circulation_license" 
+                                               name="remove_circulation_license">
+                                        <label class="form-check-label" for="remove_circulation_license">
+                                            Αφαίρεση άδειας κυκλοφορίας
+                                        </label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="circulation_license_removal_days" class="form-label">Ημέρες αφαίρεσης</label>
+                                        <input type="number" class="form-control" id="circulation_license_removal_days" 
+                                               name="circulation_license_removal_days" min="1" disabled
+                                               placeholder="π.χ. 30">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Αφαίρεση Άδειας Οδήγησης -->
+                        <div class="col-md-4">
+                            <div class="card border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <strong>Άδεια Οδήγησης</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="remove_driving_license" 
+                                               name="remove_driving_license">
+                                        <label class="form-check-label" for="remove_driving_license">
+                                            Αφαίρεση άδειας οδήγησης
+                                        </label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="driving_license_removal_days" class="form-label">Ημέρες αφαίρεσης</label>
+                                        <input type="number" class="form-control" id="driving_license_removal_days" 
+                                               name="driving_license_removal_days" min="1" disabled
+                                               placeholder="π.χ. 60">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Ειδική Διάταξη -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card border-secondary">
+                                <div class="card-body">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="parking_special_provision" 
+                                               name="parking_special_provision">
+                                        <label class="form-check-label" for="parking_special_provision">
+                                            <strong>Ειδική διάταξη στάθμευσης (Άρθρο 7)</strong>
+                                            <br><small class="text-muted">Αφαίρεση στοιχείων αντί άδειας οδήγησης για παραβάσεις στάθμευσης</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Κουμπιά Ενεργειών -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus me-1"></i>Δημιουργία Τύπου Παράβασης
+                            </button>
+                            <a href="{{ url_for('admin_fines_management') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Άκυρο
+                            </a>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-outline-info" onclick="previewFine()">
+                                <i class="fas fa-eye me-1"></i>Προεπισκόπηση
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+// Ενεργοποίηση/απενεργοποίηση πεδίων ημερών βάσει checkbox
+document.getElementById('remove_circulation_elements').addEventListener('change', function() {
+    document.getElementById('circulation_removal_days').disabled = !this.checked;
+    if (!this.checked) document.getElementById('circulation_removal_days').value = '';
+});
+
+document.getElementById('remove_circulation_license').addEventListener('change', function() {
+    document.getElementById('circulation_license_removal_days').disabled = !this.checked;
+    if (!this.checked) document.getElementById('circulation_license_removal_days').value = '';
+});
+
+document.getElementById('remove_driving_license').addEventListener('change', function() {
+    document.getElementById('driving_license_removal_days').disabled = !this.checked;
+    if (!this.checked) document.getElementById('driving_license_removal_days').value = '';
+});
+
+// Προεπισκόπηση προστίμου
+function previewFine() {
+    const description = document.getElementById('description').value;
+    const article = document.getElementById('article').value;
+    const articleParagraph = document.getElementById('article_paragraph').value;
+    const fineCars = document.getElementById('fine_cars').value;
+    
+    if (!description || !fineCars) {
+        alert('Παρακαλώ συμπληρώστε τουλάχιστον την περιγραφή και το πρόστιμο αυτοκινήτων.');
+        return;
+    }
+    
+    let fullArticle = '';
+    if (article) {
+        fullArticle = `Άρθρο ${article}`;
+        if (articleParagraph) {
+            fullArticle += ` παρ. ${articleParagraph}`;
+        }
+    }
+    
+    const previewText = `
+Περιγραφή: ${description}
+Άρθρο ΚΟΚ: ${fullArticle || 'Χωρίς άρθρο'}
+Πρόστιμο Αυτοκινήτων: ${fineCars}€
+    `;
+    
+    alert('Προεπισκόπηση:\n' + previewText);
+}
+
+// Validation πριν την υποβολή
+document.querySelector('form').addEventListener('submit', function(e) {
+    const description = document.getElementById('description').value.trim();
+    const fineCars = document.getElementById('fine_cars').value;
+    
+    if (!description) {
+        e.preventDefault();
+        alert('Η περιγραφή της παράβασης είναι υποχρεωτική.');
+        document.getElementById('description').focus();
+        return;
+    }
+    
+    if (!fineCars || parseFloat(fineCars) <= 0) {
+        e.preventDefault();
+        alert('Το πρόστιμο αυτοκινήτων πρέπει να είναι θετικός αριθμός.');
+        document.getElementById('fine_cars').focus();
+        return;
+    }
+});
+</script>
+
+{% endblock %}

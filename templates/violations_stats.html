@@ -1,0 +1,125 @@
+{% extends "base_v2.html" %}
+
+{% block title %}Στατιστικά Παραβάσεων - Δημοτική Αστυνομία{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="mb-0">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        Στατιστικά Παραβάσεων
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Γενικά Στατιστικά -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h4 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-chart-bar mr-2"></i>Γενικά Στατιστικά
+                            </h4>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                                    <h3>{{ stats.total_violations }}</h3>
+                                    <p class="mb-0">Συνολικές Παραβάσεις</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-calendar-day fa-2x mb-2"></i>
+                                    <h3>{{ stats.today_violations }}</h3>
+                                    <p class="mb-0">Παραβάσεις Σήμερα</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-calendar-alt fa-2x mb-2"></i>
+                                    <h3>{{ stats.month_violations }}</h3>
+                                    <p class="mb-0">Παραβάσεις Μήνα</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="card bg-warning text-dark">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-camera fa-2x mb-2"></i>
+                                    <h3>{{ stats.violations_with_photos }}</h3>
+                                    <p class="mb-0">Με Φωτογραφίες</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Επιπλέον Στατιστικά -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h4 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-info-circle mr-2"></i>Επιπλέον Πληροφορίες
+                            </h4>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-secondary text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-ban fa-2x mb-2"></i>
+                                    <h3>{{ stats.violations_with_removals }}</h3>
+                                    <p class="mb-0">Με Επιτόπια Μέτρα</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-envelope fa-2x mb-2"></i>
+                                    <h3>{{ unread_messages }}</h3>
+                                    <p class="mb-0">Αδιάβαστα Μηνύματα</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Γραφήματα (placeholder για μελλοντική υλοποίηση) -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h4 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-chart-pie mr-2"></i>Αναλυτικά Γραφήματα
+                            </h4>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Τα αναλυτικά γραφήματα θα προστεθούν σε επόμενη ενημέρωση.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('kok_module') }}" class="btn btn-secondary mr-2">
+                        <i class="fas fa-arrow-left mr-2"></i>Επιστροφή στο ΚΟΚ
+                    </a>
+                    <a href="{{ url_for('view_violations') }}" class="btn btn-primary">
+                        <i class="fas fa-list mr-2"></i>Προβολή Παραβάσεων
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
