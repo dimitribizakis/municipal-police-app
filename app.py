@@ -1,8 +1,7 @@
 import os
 import json
 import base64
-import sqlite3
-import shutil
+import logging
 from datetime import datetime, timedelta
 from functools import wraps
 from decimal import Decimal
@@ -15,8 +14,22 @@ from PIL import Image
 import io
 import secrets
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = secrets.token_hex(16)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(16)
+
+# Security improvements
+@app.after_request
+def add_security_headers(response):
+    """Προσθήκη security headers"""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
 
 # Database Configuration - PostgreSQL for production, SQLite for development
 DATABASE_URI = os.environ.get('DATABASE_URL')
@@ -34,7 +47,16 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
+
+# Allowed file extensions for security
+ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'pdf'}
+
+def allowed_file(filename):
+    """Έλεγχος επιτρεπόμενων file extensions"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 db = SQLAlchemy(app)
 
@@ -304,170 +326,6 @@ class Notification(db.Model):
         }
         return classes.get(self.type, 'alert-info')
 
-# ======================== MIGRATION FUNCTIONALITY ========================
-
-def database_migration():
-    """
-    Μετάβαση δεδομένων από municipal_police_v2.db σε municipal_police_v3.db
-    Επιστρέφει dictionary με αποτελέσματα
-    """
-    results = {
-        'success': False,
-        'message': '',
-        'stats': {},
-        'errors': []
-    }
-    
-    old_db_path = 'municipal_police_v2.db'
-    new_db_path = 'municipal_police_v3.db'
-    
-    # Έλεγχος αν υπάρχει η παλιά βάση
-    if not os.path.exists(old_db_path):
-        results['message'] = f'Δεν βρέθηκε η παλιά βάση δεδομένων ({old_db_path})'
-        return results
-    
-    # Δημιουργία αντιγράφου ασφαλείας
-    try:
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_name = f'municipal_police_v2_backup_{timestamp}.db'
-        shutil.copy2(old_db_path, backup_name)
-        results['backup_file'] = backup_name
-    except Exception as e:
-        results['errors'].append(f'Σφάλμα δημιουργίας αντιγράφου: {str(e)}')
-        return results
-    
-    try:
-        # Σύνδεση με την παλιά βάση
-        old_conn = sqlite3.connect(old_db_path)
-        old_conn.row_factory = sqlite3.Row
-        old_cursor = old_conn.cursor()
-        
-        # Δημιουργία των νέων πινάκων
-        with app.app_context():
-            db.create_all()
-        
-        # Σύνδεση με τη νέα βάση
-        new_conn = sqlite3.connect(new_db_path)
-        new_cursor = new_conn.cursor()
-        
-        # Μετάβαση δεδομένων
-        migration_stats = {}
-        
-        # Μετάβαση χρηστών
-        old_cursor.execute('SELECT * FROM user')
-        users = old_cursor.fetchall()
-        
-        user_count = 0
-        for user in users:
-            # Καθορισμός ρόλου βάσει του παλιού συστήματος
-            role = 'admin' if user.get('role') == 'admin' else 'officer'
-            
-            new_cursor.execute('''
-                INSERT OR REPLACE INTO user (
-                    id, username, email, password_hash, first_name, last_name,
-                    rank, role, is_active, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                user['id'], user['username'], user['email'], user['password_hash'],
-                user['first_name'], user['last_name'], user['rank'], role,
-                user['is_active'], user['created_at']
-            ))
-            user_count += 1
-        
-        migration_stats['users'] = user_count
-        
-        # Μετάβαση δυναμικών πεδίων
-        old_cursor.execute('SELECT * FROM dynamic_field')
-        fields = old_cursor.fetchall()
-        
-        field_count = 0
-        for field in fields:
-            new_cursor.execute('''
-                INSERT OR REPLACE INTO dynamic_field (
-                    id, field_type, value, created_by, created_at, is_active
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                field['id'], field['field_type'], field['value'],
-                field['created_by'], field['created_at'], field['is_active']
-            ))
-            field_count += 1
-        
-        migration_stats['dynamic_fields'] = field_count
-        
-        # Μετάβαση παραβάσεων
-        old_cursor.execute('SELECT * FROM violation')
-        violations = old_cursor.fetchall()
-        
-        violation_count = 0
-        for violation in violations:
-            # Προσθήκη default τιμών για τα νέα πεδία αν δεν υπάρχουν
-            violation_articles = violation.get('violation_articles', None)
-            total_fine_amount = violation.get('total_fine_amount', None) 
-            fine_breakdown = violation.get('fine_breakdown', None)
-            
-            new_cursor.execute('''
-                INSERT OR REPLACE INTO violation (
-                    id, license_plate, vehicle_brand, vehicle_color, vehicle_type,
-                    violation_date, violation_time, street, street_number,
-                    selected_violations, plates_removed, license_removed,
-                    registration_removed, photo_filename, driver_last_name,
-                    driver_first_name, driver_father_name, driver_afm,
-                    driver_signature, violation_articles, total_fine_amount,
-                    fine_breakdown, officer_id, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                violation['id'], violation['license_plate'], violation['vehicle_brand'],
-                violation['vehicle_color'], violation['vehicle_type'], violation['violation_date'],
-                violation['violation_time'], violation['street'], violation['street_number'],
-                violation['selected_violations'], violation['plates_removed'],
-                violation['license_removed'], violation['registration_removed'],
-                violation['photo_filename'], violation['driver_last_name'],
-                violation['driver_first_name'], violation['driver_father_name'],
-                violation['driver_afm'], violation['driver_signature'],
-                violation_articles, total_fine_amount, fine_breakdown,
-                violation['officer_id'], violation['created_at'], violation['updated_at']
-            ))
-            violation_count += 1
-        
-        migration_stats['violations'] = violation_count
-        
-        # Commit αλλαγών
-        new_conn.commit()
-        
-        # Στατιστικά για τη νέα βάση
-        new_cursor.execute('SELECT COUNT(*) FROM user WHERE role = "admin"')
-        admin_count = new_cursor.fetchone()[0]
-        
-        new_cursor.execute('SELECT COUNT(*) FROM user WHERE role = "officer"')
-        officer_count = new_cursor.fetchone()[0]
-        
-        new_cursor.execute('SELECT COUNT(*) FROM violation WHERE total_fine_amount IS NOT NULL')
-        violations_with_fines = new_cursor.fetchone()[0]
-        
-        migration_stats.update({
-            'admin_users': admin_count,
-            'officer_users': officer_count,
-            'violations_with_fines': violations_with_fines
-        })
-        
-        results.update({
-            'success': True,
-            'message': 'Η μετάβαση ολοκληρώθηκε επιτυχώς!',
-            'stats': migration_stats
-        })
-        
-    except Exception as e:
-        results['message'] = f'Σφάλμα κατά τη μετάβαση: {str(e)}'
-        results['errors'].append(str(e))
-    
-    finally:
-        try:
-            old_conn.close()
-            new_conn.close()
-        except:
-            pass
-    
-    return results
 
 # ======================== AUTHENTICATION DECORATORS ========================
 
@@ -508,33 +366,7 @@ def poweruser_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# ======================== MIGRATION ROUTES ========================
 
-@app.route('/admin/migrate')
-@admin_required
-def migration_page():
-    """Σελίδα μετάβασης δεδομένων"""
-    # Έλεγχος αν υπάρχει η παλιά βάση
-    old_db_exists = os.path.exists('municipal_police_v2.db')
-    new_db_exists = os.path.exists('municipal_police_v3.db')
-    
-    return render_template('admin/migration.html', 
-                         old_db_exists=old_db_exists,
-                         new_db_exists=new_db_exists)
-
-
-@app.route('/admin/run-migration', methods=['POST'])
-@admin_required
-def run_migration():
-    """Εκτέλεση μετάβασης δεδομένων"""
-    results = database_migration()
-    
-    if results['success']:
-        flash('Η μετάβαση ολοκληρώθηκε επιτυχώς!', 'success')
-    else:
-        flash(f'Σφάλμα μετάβασης: {results["message"]}', 'danger')
-    
-    return render_template('admin/migration_result.html', results=results)
 
 # ======================== MAIN ROUTES ========================
 
@@ -1351,11 +1183,21 @@ def update_violation(violation_id):
 def submit_violation():
     """Υποβολή νέας παράβασης"""
     try:
-        # Λήψη δεδομένων από φόρμα
-        license_plate = request.form['license_plate'].strip().upper()
-        vehicle_brand = request.form['vehicle_brand'].strip()
-        vehicle_color = request.form['vehicle_color'].strip()
-        vehicle_type = request.form['vehicle_type'].strip()
+        # Λήψη δεδομένων από φόρμα με validation
+        license_plate = request.form.get('license_plate', '').strip().upper()
+        vehicle_brand = request.form.get('vehicle_brand', '').strip()
+        vehicle_color = request.form.get('vehicle_color', '').strip()
+        vehicle_type = request.form.get('vehicle_type', '').strip()
+        
+        # Basic validation
+        if not all([license_plate, vehicle_brand, vehicle_color, vehicle_type]):
+            flash('Όλα τα πεδία οχήματος είναι υποχρεωτικά.', 'error')
+            return redirect(url_for('new_violation'))
+        
+        # Validate license plate format (basic check)
+        if len(license_plate) < 3 or len(license_plate) > 10:
+            flash('Μη έγκυρη πινακίδα κυκλοφορίας.', 'error')
+            return redirect(url_for('new_violation'))
         
         # Επεξεργασία custom πεδίων
         if vehicle_color == 'custom':
@@ -1382,8 +1224,13 @@ def submit_violation():
         current_datetime = datetime.now()
         violation_date = current_datetime.date()
         violation_time = current_datetime.time()
-        street = request.form['street'].strip()
-        street_number = request.form['street_number'].strip()
+        street = request.form.get('street', '').strip()
+        street_number = request.form.get('street_number', '').strip()
+        
+        # Validation for street information
+        if not all([street, street_number]):
+            flash('Τα στοιχεία διεύθυνσης είναι υποχρεωτικά.', 'error')
+            return redirect(url_for('new_violation'))
         
         # Επιλεγμένες παραβάσεις
         selected_violations = request.form.getlist('violations')
@@ -1446,6 +1293,7 @@ def submit_violation():
         
     except Exception as e:
         db.session.rollback()
+        logger.error(f'Error in submit_violation: {str(e)}', exc_info=True)
         flash(f'Σφάλμα κατά την καταχώρηση: {str(e)}', 'error')
         return redirect(url_for('new_violation'))
 
