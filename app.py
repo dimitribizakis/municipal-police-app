@@ -752,13 +752,23 @@ def view_message(message_id):
 # ======================== ADMIN ROUTES ========================
 
 @app.route('/admin')
+@login_required
 @admin_required
 def admin_dashboard():
     """Admin Dashboard"""
+    current_user = User.query.get(session['user_id'])
+    
     # Στατιστικά
     total_users = User.query.count()
     total_violations = Violation.query.count()
     total_messages = Message.query.count()
+    
+    # Παραβάσεις σήμερα
+    from datetime import date
+    today = date.today()
+    today_violations = Violation.query.filter(
+        db.func.date(Violation.violation_date) == today
+    ).count()
     
     # Πρόσφατες δραστηριότητες
     recent_violations = Violation.query.order_by(Violation.created_at.desc()).limit(5).all()
@@ -771,6 +781,11 @@ def admin_dashboard():
     }
     
     return render_template('admin/dashboard.html', 
+                         current_user=current_user,
+                         total_users=total_users,
+                         total_violations=total_violations,
+                         total_messages=total_messages,
+                         today_violations=today_violations,
                          stats=stats,
                          recent_violations=recent_violations,
                          recent_users=recent_users)
