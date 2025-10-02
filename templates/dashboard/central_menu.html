@@ -102,39 +102,6 @@
             </div>
         </div>
 
-        <!-- Μηνύματα -->
-        <div class="col-md-4 mb-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="fas fa-envelope fa-3x text-danger mb-3"></i>
-                    <h5 class="card-title">Μηνύματα</h5>
-                    <p class="card-text">Εσωτερικό σύστημα επικοινωνίας
-                        {% if stats.unread_messages > 0 %}
-                        <br><span class="badge badge-danger">{{ stats.unread_messages }} νέα</span>
-                        {% endif %}
-                    </p>
-                    <a href="{{ url_for('messages_inbox') }}" class="btn btn-danger">
-                        <i class="fas fa-arrow-right mr-2"></i>Είσοδος
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Admin Functions (μόνο για Admin/PowerUser) -->
-        {% if user.can_view_admin_dashboard() %}
-        <div class="col-md-4 mb-3">
-            <div class="card h-100 shadow-sm border-primary">
-                <div class="card-body text-center">
-                    <i class="fas fa-cogs fa-3x text-dark mb-3"></i>
-                    <h5 class="card-title">Διαχείριση Συστήματος</h5>
-                    <p class="card-text">Διαχείριση χρηστών, στατιστικά, ρυθμίσεις</p>
-                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-dark">
-                        <i class="fas fa-arrow-right mr-2"></i>Είσοδος
-                    </a>
-                </div>
-            </div>
-        </div>
-        {% endif %}
     </div>
 
     <!-- Πληροφορίες Χρήστη -->
