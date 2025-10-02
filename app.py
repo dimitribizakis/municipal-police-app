@@ -465,6 +465,19 @@ def mark_all_notifications_read():
     db.session.commit()
     return jsonify({'success': True})
 
+@app.route('/api/unread-messages')
+@login_required
+def get_unread_messages():
+    """API endpoint για λήψη αριθμού μη αναγνωσμένων μηνυμάτων"""
+    user_id = session['user_id']
+    
+    # Υπολογισμός μη αναγνωσμένων μηνυμάτων
+    unread_count = Message.query.filter_by(recipient_id=user_id, is_read=False).count()
+    
+    return jsonify({
+        'unread_count': unread_count
+    })
+
 def create_notification(user_id, title, message, notification_type='info'):
     """Helper function για δημιουργία ειδοποίησης"""
     notification = Notification(
