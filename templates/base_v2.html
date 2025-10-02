@@ -199,27 +199,25 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% if session.user_id %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('new_violation') }}">
-                                <i class="fas fa-plus-circle me-1"></i>Νέα Παράβαση
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('view_violations') }}">
-                                <i class="fas fa-list me-1"></i>Παραβάσεις
-                            </a>
-                        </li>
-                        {% if session.user_role == 'admin' %}
+                        {% if session.user_role in ['admin', 'poweruser'] %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
                                 <i class="fas fa-cogs me-1"></i>Διαχείριση
                             </a>
                             <ul class="dropdown-menu">
+                                {% if session.user_role == 'admin' %}
                                 <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
                                     <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                                 </a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('admin_users') }}">
                                     <i class="fas fa-users me-2"></i>Χρήστες
+                                </a></li>
+                                {% endif %}
+                                <li><a class="dropdown-item" href="{{ url_for('admin_violation_types') }}">
+                                    <i class="fas fa-gavel me-2"></i>Τύποι Παραβάσεων
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_fines_management') }}">
+                                    <i class="fas fa-euro-sign me-2"></i>Επεξεργασία Προστίμων
                                 </a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('admin_violations') }}">
                                     <i class="fas fa-edit me-2"></i>Επεξεργασία Παραβάσεων
