@@ -779,8 +779,9 @@ def admin_dashboard():
 @admin_required
 def admin_users():
     """Διαχείριση χρηστών"""
+    current_user = User.query.get(session['user_id'])
     users = User.query.order_by(User.created_at.desc()).all()
-    return render_template('admin/users_enhanced.html', users=users)
+    return render_template('admin/users.html', users=users, current_user=current_user)
 
 @app.route('/admin/users/add', methods=['GET', 'POST'])
 @admin_required
