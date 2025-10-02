@@ -511,6 +511,8 @@
             
             // Initialize notifications
             if (typeof(loadNotifications) === 'function') {
+                // Sync existing unread messages to notifications
+                syncMessageNotifications();
                 loadNotifications();
                 // Reload notifications every 30 seconds
                 setInterval(loadNotifications, 30000);
@@ -534,6 +536,22 @@
         });
         
         // Notification functions
+        function syncMessageNotifications() {
+            fetch('/api/sync-message-notifications', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.notifications_created > 0) {
+                    console.log(`Συγχρονίστηκαν ${data.notifications_created} ειδοποιήσεις για μηνύματα`);
+                }
+            })
+            .catch(error => console.error('Error syncing message notifications:', error));
+        }
+        
         function loadNotifications() {
             fetch('/api/notifications')
                 .then(response => response.json())
@@ -570,14 +588,21 @@
             let html = '';
             notifications.forEach(notification => {
                 const timeAgo = formatTimeAgo(new Date(notification.created_at));
+                const isMessageNotification = notification.type === 'message' && notification.related_message_id;
+                const clickAction = isMessageNotification 
+                    ? `onclick="goToMessage(${notification.id}, ${notification.related_message_id})"` 
+                    : `onclick="markAsRead(${notification.id})"`;
+                const cursorStyle = isMessageNotification ? 'style="cursor: pointer;"' : '';
+                
                 html += `
-                    <div class="dropdown-item ${notification.is_read ? '' : 'bg-light'}" onclick="markAsRead(${notification.id})">
+                    <div class="dropdown-item ${notification.is_read ? '' : 'bg-light'}" ${clickAction} ${cursorStyle}>
                         <div class="d-flex align-items-center">
-                            <i class="${notification.icon} text-${notification.type === 'error' ? 'danger' : notification.type === 'warning' ? 'warning' : notification.type === 'success' ? 'success' : 'info'} me-2"></i>
+                            <i class="${notification.icon} text-${notification.type === 'error' ? 'danger' : notification.type === 'warning' ? 'warning' : notification.type === 'success' ? 'success' : notification.type === 'message' ? 'primary' : 'info'} me-2"></i>
                             <div class="flex-grow-1">
                                 <div class="fw-bold">${notification.title}</div>
                                 <div class="small text-muted">${notification.message}</div>
                                 <div class="small text-muted">${timeAgo}</div>
+                                ${isMessageNotification ? '<div class="small text-primary"><i class="fas fa-external-link-alt me-1"></i>Κλικ για προβολή μηνύματος</div>' : ''}
                             </div>
                             ${!notification.is_read ? '<div class="badge bg-primary rounded-pill">Νέο</div>' : ''}
                         </div>
@@ -602,6 +627,28 @@
                 }
             })
             .catch(error => console.error('Error marking notification as read:', error));
+        }
+        
+        function goToMessage(notificationId, messageId) {
+            // Σήμανση ειδοποίησης ως διαβασμένη
+            fetch(`/api/notifications/${notificationId}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Μετάβαση στο μήνυμα
+                    window.location.href = `/messages/${messageId}`;
+                }
+            })
+            .catch(error => {
+                console.error('Error marking notification as read:', error);
+                // Μετάβαση στο μήνυμα ακόμα και αν αποτύχει η σήμανση
+                window.location.href = `/messages/${messageId}`;
+            });
         }
         
         function markAllAsRead() {
