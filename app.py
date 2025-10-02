@@ -1449,40 +1449,5 @@ def submit_violation():
         flash(f'Σφάλμα κατά την καταχώρηση: {str(e)}', 'error')
         return redirect(url_for('new_violation'))
 
-# === STARTUP INITIALIZATION ===
-# Αυτό τρέχει κάθε φορά που ξεκινάει η εφαρμογή (local ή production)
-def initialize_database():
-    """Δημιουργία πινάκων και default admin user - τρέχει αυτόματα στο startup"""
-    try:
-        with app.app_context():
-            # Δημιουργία όλων των πινάκων
-            db.create_all()
-            
-            # Δημιουργία default admin αν δεν υπάρχει
-            admin = User.query.filter_by(username='admin').first()
-            if not admin:
-                admin = User(
-                    username='admin',
-                    email='admin@municipal.gr',
-                    first_name='Admin',
-                    last_name='User',
-                    rank='Διοικητής',
-                    role='admin'
-                )
-                admin.set_password('admin123')
-                db.session.add(admin)
-                db.session.commit()
-                print("✅ [STARTUP] Δημιουργήθηκε default admin user: admin/admin123")
-            else:
-                print("✅ [STARTUP] Admin user υπάρχει ήδη")
-                
-            print("✅ [STARTUP] Database initialization completed")
-            
-    except Exception as e:
-        print(f"❌ [STARTUP] Database initialization error: {e}")
-
-# Εκτέλεση initialization κάθε φορά που φορτώνεται το module
-initialize_database()
-
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
