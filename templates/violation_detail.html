@@ -14,7 +14,13 @@
                         <div>
                             <h3 class="mb-1 text-primary fw-bold">ΔΗΜΟΤΙΚΗ ΑΣΤΥΝΟΜΙΑ</h3>
                             <h5 class="text-muted">ΑΝΑΛΥΤΙΚΗ ΠΡΟΒΟΛΗ ΠΑΡΑΒΑΣΗΣ</h5>
-                            <p class="mb-0"><strong>ID:</strong> #{{ violation.id }} | <strong>Ημ/νία:</strong> {{ violation.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                            <p class="mb-0"><strong>ID:</strong> #{{ violation.id }} | <strong>Ημ/νία:</strong> 
+                            {% if violation.created_at %}
+                                {{ violation.created_at.strftime('%d/%m/%Y %H:%M') }}
+                            {% else %}
+                                Δεν καταγράφηκε
+                            {% endif %}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -344,12 +350,24 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <strong class="text-primary">Καταχωρήθηκε:</strong><br>
-                        <small>{{ violation.created_at.strftime('%d/%m/%Y στις %H:%M') }}</small>
+                        <small>
+                        {% if violation.created_at %}
+                            {{ violation.created_at.strftime('%d/%m/%Y στις %H:%M') }}
+                        {% else %}
+                            Δεν καταγράφηκε
+                        {% endif %}
+                        </small>
                     </div>
                     {% if violation.updated_at and violation.updated_at != violation.created_at %}
                     <div class="mb-3">
                         <strong class="text-primary">Τελευταία ενημέρωση:</strong><br>
-                        <small>{{ violation.updated_at.strftime('%d/%m/%Y στις %H:%M') }}</small>
+                        <small>
+                        {% if violation.updated_at %}
+                            {{ violation.updated_at.strftime('%d/%m/%Y στις %H:%M') }}
+                        {% else %}
+                            Δεν καταγράφηκε
+                        {% endif %}
+                        </small>
                     </div>
                     {% endif %}
                     <div>
