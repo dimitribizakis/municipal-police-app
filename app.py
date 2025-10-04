@@ -9,6 +9,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, or_
 from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from PIL import Image
@@ -686,7 +687,7 @@ def view_violations():
 @login_required
 def view_violation(violation_id):
     """Προβολή λεπτομερειών παράβασης"""
-    violation = Violation.query.get_or_404(violation_id)
+    violation = Violation.query.options(db.joinedload(Violation.officer)).get_or_404(violation_id)
     user = User.query.get(session['user_id'])
     
     return render_template('violation_detail.html', violation=violation, user=user, current_user=user)
