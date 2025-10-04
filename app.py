@@ -296,6 +296,13 @@ class Violation(db.Model):
         if self.total_fine_amount:
             return f"{float(self.total_fine_amount):.2f}€"
         return "0.00€"
+    
+    def get_violation_data_by_id(self, violation_id):
+        """Επιστρέφει τα στοιχεία παράβασης βάσει ID"""
+        try:
+            return ViolationsData.query.get(int(violation_id))
+        except (ValueError, AttributeError):
+            return None
 
 class Notification(db.Model):
     """Πίνακας Ειδοποιήσεων"""
@@ -1516,6 +1523,47 @@ def submit_violation():
         license_removed = 'license_removed' in request.form  
         registration_removed = 'registration_removed' in request.form
         
+        # Υπολογισμός άρθρων και συνολικού ποσού παραβάσεων
+        total_fine = 0
+        violation_articles_list = []
+        
+        for violation_id in selected_violations:
+            try:
+                violation_data = ViolationsData.query.get(int(violation_id))
+                if violation_data:
+                    # Προσθήκη άρθρου στη λίστα
+                    if violation_data.article and violation_data.article.strip():
+                        article_text = violation_data.article.strip()
+                        if violation_data.article_paragraph and violation_data.article_paragraph.strip():
+                            article_text += f" παρ. {violation_data.article_paragraph.strip()}"
+                        violation_articles_list.append(article_text)
+                    
+                    # Υπολογισμός ποσού βάσει τύπου οχήματος
+                    if vehicle_type.lower() in ['αυτοκίνητο', 'αυτοκινητο', 'car', 'automobile']:
+                        if violation_data.fine_cars:
+                            total_fine += float(violation_data.fine_cars)
+                    elif vehicle_type.lower() in ['μοτοσικλέτα', 'μοτοσικλετα', 'motorcycle', 'bike']:
+                        if violation_data.fine_motorcycles:
+                            fine_amount = float(violation_data.fine_motorcycles)
+                            # Έλεγχος για μισό πρόστιμο
+                            if violation_data.half_fine_motorcycles:
+                                fine_amount = fine_amount / 2
+                            total_fine += fine_amount
+                        elif violation_data.fine_cars:  # Fallback to car fine if motorcycle fine not available
+                            total_fine += float(violation_data.fine_cars)
+                    elif vehicle_type.lower() in ['φορτηγό', 'φορτηγο', 'truck']:
+                        if violation_data.fine_trucks:
+                            total_fine += float(violation_data.fine_trucks)
+                        elif violation_data.fine_cars:  # Fallback to car fine if truck fine not available
+                            total_fine += float(violation_data.fine_cars)
+                    else:
+                        # Default to car fine for unknown vehicle types
+                        if violation_data.fine_cars:
+                            total_fine += float(violation_data.fine_cars)
+            except (ValueError, AttributeError) as e:
+                logger.warning(f"Error processing violation {violation_id}: {str(e)}")
+                continue
+        
         # Δημιουργία παράβασης
         violation = Violation(
             license_plate=license_plate,
@@ -1527,6 +1575,8 @@ def submit_violation():
             street=street,
             street_number=street_number,
             selected_violations=json.dumps(selected_violations),
+            violation_articles=json.dumps(violation_articles_list) if violation_articles_list else None,
+            total_fine_amount=total_fine if total_fine > 0 else None,
             plates_removed=plates_removed,
             license_removed=license_removed,
             registration_removed=registration_removed,
